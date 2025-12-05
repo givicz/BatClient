@@ -1,0 +1,42 @@
+{
+  "on": {
+    "sounds": [
+      "batclient:on"
+    ]
+  },
+  "off": {
+    "sounds": [
+      "batclient:off"
+    ]
+  },
+  "get": {
+    "sounds": [
+      "batclient:get"
+    ]
+  },
+  "bubble": {
+    "sounds": [
+      "batclient:bubble"
+    ]
+  },
+  "bell": {
+    "sounds": [
+      "batclient:bell"
+    ]
+  },
+  "bonk": {
+    "sounds": [
+      "batclient:bonk"
+    ]
+  },
+  "pok": {
+    "sounds": [
+      "batclient:pok"
+    ]
+  },
+  "magic_pok": {
+    "sounds": [
+      "batclient:magic_pok"
+    ]
+  }
+}

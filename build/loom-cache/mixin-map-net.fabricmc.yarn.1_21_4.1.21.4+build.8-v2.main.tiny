@@ -1,0 +1,26 @@
+v1	named	intermediary
+FIELD	me/BATapp/batclient/mixin/inject/CameraMixin	F	yaw	field_18718
+FIELD	me/BATapp/batclient/mixin/inject/CameraMixin	F	pitch	field_18717
+FIELD	me/BATapp/batclient/mixin/inject/CameraMixin	Lnet/minecraft/util/math/Vec3d;	pos	field_18712
+FIELD	me/BATapp/batclient/mixin/inject/GameRendererMixin	F	zoom	field_4005
+FIELD	me/BATapp/batclient/mixin/inject/GameRendererMixin	F	zoomX	field_3988
+FIELD	me/BATapp/batclient/mixin/inject/GameRendererMixin	F	zoomY	field_4004
+FIELD	me/BATapp/batclient/mixin/inject/GameRendererMixin	F	viewDistance	field_4025
+FIELD	me/BATapp/batclient/mixin/inject/InGameHudMixin	Lnet/minecraft/client/MinecraftClient;	client	field_2035
+FIELD	me/BATapp/batclient/mixin/inject/InGameHudMixin	Lnet/minecraft/util/Identifier;	CROSSHAIR_TEXTURE	field_45304
+FIELD	me/BATapp/batclient/mixin/inject/MixinClientPlayNetworkHandler	Lnet/minecraft/client/world/ClientWorld;	world	field_3699
+FIELD	me/BATapp/batclient/mixin/inject/MixinOverlayTexture	Lnet/minecraft/client/texture/NativeImageBackedTexture;	texture	field_21013
+FIELD	me/BATapp/batclient/mixin/inject/ScreenMixin	Lnet/minecraft/text/Text;	title	field_22785
+FIELD	me/BATapp/batclient/mixin/inject/ScreenMixin	Lnet/minecraft/client/MinecraftClient;	client	field_22787
+FIELD	me/BATapp/batclient/mixin/inject/ScreenMixin	I	width	field_22789
+FIELD	me/BATapp/batclient/mixin/inject/ScreenMixin	I	height	field_22790
+FIELD	me/BATapp/batclient/mixin/inject/SmoothChatScrollMixin	I	scrolledLines	field_2066
+FIELD	me/BATapp/batclient/mixin/inject/TextFieldWidgetMixin	I	maxLength	field_2108
+FIELD	me/BATapp/batclient/mixin/modifyReturnValue/CapeTextureChanger	Lnet/minecraft/client/network/PlayerListEntry;	playerListEntry	field_3901
+METHOD	me/BATapp/batclient/mixin/inject/InGameHudMixin	()Lnet/minecraft/entity/player/PlayerEntity;	getCameraPlayer	method_1737
+METHOD	me/BATapp/batclient/mixin/inject/InGameHudMixin	(Lnet/minecraft/client/gui/DrawContext;IILnet/minecraft/client/render/RenderTickCounter;Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/item/ItemStack;I)V	renderHotbarItem	method_1762
+METHOD	me/BATapp/batclient/mixin/inject/InGameHudMixin	()Z	shouldRenderExperience	method_56135
+METHOD	me/BATapp/batclient/mixin/inject/MixinClientPlayNetworkHandler	(Lnet/minecraft/entity/player/PlayerEntity;)Lnet/minecraft/item/ItemStack;	getActiveDeathProtector	method_19691
+METHOD	me/BATapp/batclient/mixin/inject/MixinHeldItemRenderer	(Lnet/minecraft/client/util/math/MatrixStack;FLnet/minecraft/util/Arm;Lnet/minecraft/item/ItemStack;Lnet/minecraft/entity/player/PlayerEntity;)V	applyEatOrDrinkTransformation	method_3218
+METHOD	me/BATapp/batclient/mixin/inject/MixinHeldItemRenderer	(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/util/Arm;F)V	applyEquipOffset	method_3224
+METHOD	me/BATapp/batclient/mixin/inject/ScreenMixin	(Lnet/minecraft/client/gui/Element;)Lnet/minecraft/client/gui/Element;	addDrawableChild	method_37063

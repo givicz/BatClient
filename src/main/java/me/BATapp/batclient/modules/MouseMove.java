@@ -1,0 +1,43 @@
+package me.BATapp.batclient.modules;
+
+import me.BATapp.batclient.config.ConfigurableModule;
+import me.BATapp.batclient.render.Render2D;
+import me.BATapp.batclient.render.TargetHudRenderer;
+import me.BATapp.batclient.utils.MouseUtils;
+import me.BATapp.batclient.utils.Palette;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.util.math.MatrixStack;
+
+import java.awt.*;
+
+public class MouseMove extends ConfigurableModule {
+
+    public static void render(DrawContext context) {
+        if (!CONFIG.mouseMoveEnabled) return;
+
+        Color color1 = TargetHudRenderer.bottomLeft;
+        Color color2 = TargetHudRenderer.bottomRight;
+        Color color3 = TargetHudRenderer.topRight;
+        Color color4 = TargetHudRenderer.topLeft;
+
+        int centerX = CONFIG.mouseMoveX + 20;
+        int centerY = CONFIG.mouseMoveY + 20;
+
+        if (CONFIG.mouseMoveBlur) {
+            Render2D.drawGradientBlurredShadow1(context.getMatrices(), centerX - 20, centerY - 20, 40, 40, 7, color1, color2, color3, color4);
+        }
+        Render2D.drawRound(context.getMatrices(), centerX - 20, centerY - 20, 40, 40, 4, Palette.getBackColor());
+
+        MatrixStack matrices = context.getMatrices();
+        matrices.push();
+        matrices.translate((float) MouseUtils.cursorX, (float) MouseUtils.cursorY, 0);
+
+        int dotScale = 10;
+        float scaleOffset = dotScale / 2f;
+
+        Render2D.drawGradientBlurredShadow1(context.getMatrices(), centerX - scaleOffset, centerY - scaleOffset, dotScale, dotScale, 4, color1, color2, color3, color4);
+        Render2D.renderRoundedGradientRect(context.getMatrices(), color1, color2, color3, color4, centerX - scaleOffset, centerY - scaleOffset, dotScale, dotScale, 3);
+
+        matrices.pop();
+    }
+}
