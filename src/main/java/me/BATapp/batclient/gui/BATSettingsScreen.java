@@ -45,12 +45,12 @@ public class BATSettingsScreen extends Screen {
     private static final float ALPHA_SPEED = 0.08f;
 
     // Color settings
-    public static int COLOR_PRIMARY = 0xFF1a1a2e;
-    public static int COLOR_SECONDARY = 0xFF16213e;
-    public static int COLOR_ACCENT = 0xFF0f3460;
-    public static int COLOR_HIGHLIGHT = 0xFF00d4ff;
-    public static int COLOR_TEXT = 0xFFe0e0e0;
-    public static int COLOR_TEXT_DARK = 0xFF8a8a8a;
+    public static int COLOR_PRIMARY = 0xFF222222;
+    public static int COLOR_SECONDARY = 0xFF333333;
+    public static int COLOR_ACCENT = 0xFF008FCC;
+    public static int COLOR_HIGHLIGHT = 0xFF00BFFF;
+    public static int COLOR_TEXT = 0xFFFFFFFF;
+    public static int COLOR_TEXT_DARK = 0xFFCCCCCC;
     public static final int BORDER_RADIUS = 6;
     public static final int HEADER_HEIGHT = 27;
 
@@ -387,15 +387,11 @@ public class BATSettingsScreen extends Screen {
     }
 
     private void fillRounded(DrawContext context, int x1, int y1, int x2, int y2, int radius, int color) {
-        context.fill(x1 + radius, y1, x2 - radius, y2, color);
-        context.fill(x1, y1 + radius, x2, y2 - radius, color);
+        UIComponentRenderer.drawRoundedRect(context, x1, y1, x2 - x1, y2 - y1, radius, color);
     }
 
     private void drawBorder(DrawContext context, int x1, int y1, int x2, int y2, int radius, int color, int thickness) {
-        context.fill(x1, y1, x2, y1 + thickness, color);
-        context.fill(x1, y2 - thickness, x2, y2, color);
-        context.fill(x1, y1 + thickness, x1 + thickness, y2 - thickness, color);
-        context.fill(x2 - thickness, y1 + thickness, x2, y2 - thickness, color);
+        UIComponentRenderer.drawRoundedBorder(context, x1, y1, x2 - x1, y2 - y1, radius, color, thickness);
     }
 
     @Override

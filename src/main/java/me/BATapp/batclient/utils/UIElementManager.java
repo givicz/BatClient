@@ -31,12 +31,12 @@ public class UIElementManager {
         public int dragOffsetY = 0;
         public int resizeOffsetX = 0;
         public int resizeOffsetY = 0;
-        public int backgroundColor = 0x40000000; // Transparentní černá
-        // Use SoupAPI palette defaults for a matching look
-        public int accentColor = 0xFF66a0ff; // c1 from SoupAPI
-        public int textColor = 0xFFFFFFFF;   // white text like SoupAPI
-        public int backgroundColorAlphaOverride = 0x80181a29; // SoupAPI backColor with alpha
-        public float alpha = 0.8f; // backAlpha = 80 in SoupAPI
+        public int backgroundColor = 0xCC222222; // Moderní tmavě šedá
+        // Moderní paleta barev
+        public int accentColor = 0xFF00BFFF; // Jasně modrá
+        public int textColor = 0xFFFFFFFF;   // Bílá
+        public int backgroundColorAlphaOverride = 0xCC222222; // Moderní tmavě šedá s alpha
+        public float alpha = 0.85f; // Mírně průhledné
         public boolean gradientEnabled = true;
         private static final int RESIZE_HANDLE_SIZE = 10;
         
@@ -285,10 +285,10 @@ public class UIElementManager {
      */
     public static void resetToDefaults() {
         for (UIElement elem : elements.values()) {
-            elem.backgroundColor = 0x40000000;
-            elem.accentColor = 0xFF00d4ff;
-            elem.textColor = 0xFFe0e0e0;
-            elem.alpha = 0.8f;
+            elem.backgroundColor = 0xCC222222;
+            elem.accentColor = 0xFF00BFFF;
+            elem.textColor = 0xFFFFFFFF;
+            elem.alpha = 0.85f;
             elem.gradientEnabled = true;
         }
         savePositions();

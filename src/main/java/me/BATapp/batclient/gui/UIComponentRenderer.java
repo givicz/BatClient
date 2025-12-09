@@ -18,22 +18,13 @@ public class UIComponentRenderer {
         UIElementManager.UIElement elem = UIElementManager.getElement(elementId);
         if (elem == null) return;
         
-        // Hlavní barva s aplikovanou alpha
         int bgColor = UIElementManager.applyAlpha(elem.backgroundColor, elem.alpha);
         int accentColor = UIElementManager.applyAlpha(elem.accentColor, elem.alpha);
+        int radius = 8;
+
+        drawRoundedRect(context, x, y, width, height, radius, bgColor);
         
-        if (elem.gradientEnabled) {
-            // Vykreslit gradient - od temné po světlejší
-            drawGradientRectangle(context, x, y, x + width, y + height, 
-                                bgColor, 
-                                UIElementManager.applyAlpha(elem.backgroundColor | 0xFF000000, elem.alpha * 0.5f));
-        } else {
-            // Jednolitá barva
-            fill(context, x, y, x + width, y + height, bgColor);
-        }
-        
-        // Border s accent barvou
-        drawBorder(context, x, y, width, height, accentColor, 2);
+        drawRoundedBorder(context, x, y, width, height, radius, accentColor, 2);
     }
     
     /**
@@ -75,31 +66,62 @@ public class UIComponentRenderer {
     /**
      * Vykreslit border
      */
-    public static void drawBorder(DrawContext context, int x, int y, int width, int height,
-                                 int color, int thickness) {
-        // Top
-        fill(context, x, y, x + width, y + thickness, color);
-        // Bottom
-        fill(context, x, y + height - thickness, x + width, y + height, color);
-        // Left
-        fill(context, x, y, x + thickness, y + height, color);
-        // Right
-        fill(context, x + width - thickness, y, x + width, y + height, color);
+    public static void drawRoundedBorder(DrawContext context, int x, int y, int width, int height, int radius, int color, int thickness) {
+        // Rovné části
+        fill(context, x + radius, y, x + width - radius, y + thickness, color);
+        fill(context, x + radius, y + height - thickness, x + width - radius, y + height, color);
+        fill(context, x, y + radius, x + thickness, y + height - radius, color);
+        fill(context, x + width - thickness, y + radius, x + width, y + height - radius, color);
+
+        // Rohy
+        drawArc(context, x + radius, y + radius, radius, 180, 270, color, thickness); // Horní levý
+        drawArc(context, x + width - radius, y + radius, radius, 270, 360, color, thickness); // Horní pravý
+        drawArc(context, x + width - radius, y + height - radius, radius, 0, 90, color, thickness); // Dolní pravý
+        drawArc(context, x + radius, y + height - radius, radius, 90, 180, color, thickness); // Dolní levý
+    }
+
+    public static void drawArc(DrawContext context, int centerX, int centerY, int radius, int startAngle, int endAngle, int color, int thickness) {
+        for (int t = 0; t < thickness; t++) {
+            for (int i = startAngle; i <= endAngle; i++) {
+                double angle = Math.toRadians(i);
+                int x = (int) (centerX + Math.cos(angle) * (radius - t));
+                int y = (int) (centerY + Math.sin(angle) * (radius - t));
+                fill(context, x, y, x + 1, y + 1, color);
+            }
+        }
     }
     
     /**
-     * Vykreslit zaoblený obdélník s gradientem
+     * Vykreslí zaoblený obdélník.
      */
-    public static void drawRoundedGradientRect(DrawContext context, int x, int y, 
-                                              int width, int height, int radius,
-                                              int color1, int color2) {
-        // Hlavní obdélník
-        drawGradientRectangle(context, x + radius, y, x + width - radius, y + height,
-                            color1, color2);
-        
-        // Levý a pravý panel
-        fill(context, x, y + radius, x + radius, y + height - radius, color1);
-        fill(context, x + width - radius, y + radius, x + width, y + height - radius, color1);
+    public static void drawRoundedRect(DrawContext context, int x, int y, int width, int height, int radius, int color) {
+        fill(context, x + radius, y, x + width - radius, y + height, color);
+        fill(context, x, y + radius, x + width, y + height - radius, color);
+        drawFilledCircleCorner(context, x + radius, y + radius, radius, 0, color);
+        drawFilledCircleCorner(context, x + width - radius, y + radius, radius, 1, color);
+        drawFilledCircleCorner(context, x + width - radius, y + height - radius, radius, 2, color);
+        drawFilledCircleCorner(context, x + radius, y + height - radius, radius, 3, color);
+    }
+
+    public static void drawFilledCircleCorner(DrawContext context, int centerX, int centerY, int radius, int quadrant, int color) {
+        for (int i = 0; i <= radius; i++) {
+            int y_offset = i;
+            int x_offset = (int) Math.round(Math.sqrt(radius * radius - y_offset * y_offset));
+            switch (quadrant) {
+                case 0: // Horní levý
+                    fill(context, centerX - x_offset, centerY - y_offset, centerX, centerY - y_offset + 1, color);
+                    break;
+                case 1: // Horní pravý
+                    fill(context, centerX, centerY - y_offset, centerX + x_offset, centerY - y_offset + 1, color);
+                    break;
+                case 2: // Dolní pravý
+                    fill(context, centerX, centerY + i, centerX + x_offset, centerY + i + 1, color);
+                    break;
+                case 3: // Dolní levý
+                    fill(context, centerX - x_offset, centerY + i, centerX, centerY + i + 1, color);
+                    break;
+            }
+        }
     }
     
     /**

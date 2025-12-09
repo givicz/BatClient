@@ -57,7 +57,12 @@ public class UICustomizationScreen extends Screen {
     
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(context, mouseX, mouseY, partialTick);
+        //this.renderBackground(context, mouseX, mouseY, partialTick); // Vypneme dirt pozadí
+        
+        // Vykreslíme moderní pozadí
+        int backgroundColor = 0xCC222222; // Stejné jako v našem tématu
+        UIComponentRenderer.drawRoundedRect(context, 5, 5, this.width - 10, this.height - 10, 8, backgroundColor);
+        UIComponentRenderer.drawRoundedBorder(context, 5, 5, this.width - 10, this.height - 10, 8, 0xFF00BFFF, 2);
         
         // Title
         context.drawCenteredTextWithShadow(this.textRenderer, "UI Customization", 
