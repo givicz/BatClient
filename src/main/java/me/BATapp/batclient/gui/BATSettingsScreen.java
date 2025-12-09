@@ -26,8 +26,8 @@ public class BATSettingsScreen extends Screen {
     private boolean themeMode = false;
 
     // Screen dimensions
-    public int screenWidth = 322;
-    public int screenHeight = 233;
+    public int screenWidth = 500;
+    public int screenHeight = 300;
     public int screenX;
     public int screenY;
 
@@ -41,8 +41,8 @@ public class BATSettingsScreen extends Screen {
     // Animation
     private float scaleAnimation = 0.8f;
     private float alphaAnimation = 0.0f;
-    private static final float ANIMATION_SPEED = 0.05f;
-    private static final float ALPHA_SPEED = 0.08f;
+    private static final float ANIMATION_SPEED = 0.1f;
+    private static final float ALPHA_SPEED = 0.12f;
 
     // Color settings
     public static int COLOR_PRIMARY = 0xFF222222;
@@ -194,12 +194,12 @@ public class BATSettingsScreen extends Screen {
 
         // Left: Categories
         int catX = screenX + 10;
-        int catWidth = 100;
+        int catWidth = 120;
         renderCategories(context, catX, contentY, catWidth, contentHeight, mouseX, mouseY);
 
         // Middle: Modules
         int modX = catX + catWidth + 8;
-        int modWidth = 100;
+        int modWidth = 120;
 
         if (themeMode) {
             renderThemeSettings(context, modX, contentY, modWidth, contentHeight, mouseX, mouseY);
@@ -400,9 +400,9 @@ public class BATSettingsScreen extends Screen {
         int contentHeight = screenHeight - HEADER_HEIGHT - 10;
 
         int catX = screenX + 10;
-        int catWidth = 100;
+        int catWidth = 120;
         int modX = catX + catWidth + 8;
-        int modWidth = 100;
+        int modWidth = 120;
         int setX = modX + modWidth + 8;
 
         // Header dragging
@@ -575,8 +575,8 @@ public class BATSettingsScreen extends Screen {
         // Settings dragging
         if (selectedModule != null) {
             int contentY = screenY + HEADER_HEIGHT + 5;
-            int modX = screenX + 10 + 100 + 8;
-            int modWidth = 100;
+            int modX = screenX + 10 + 120 + 8;
+            int modWidth = 120;
             int setX = modX + modWidth + 8;
             int settingY = contentY + 20;
 
@@ -605,8 +605,8 @@ public class BATSettingsScreen extends Screen {
         // Settings release
         if (selectedModule != null) {
             int contentY = screenY + HEADER_HEIGHT + 5;
-            int modX = screenX + 10 + 100 + 8;
-            int modWidth = 100;
+            int modX = screenX + 10 + 120 + 8;
+            int modWidth = 120;
             int setX = modX + modWidth + 8;
             int settingY = contentY + 20;
 

@@ -15,7 +15,7 @@ public class Zoom extends SoupModule {
     // OPRAVENO: Přidáno 'f' ke všem číselným hodnotám pro konverzi na float
     public static final SliderSetting zoomLevel = new SliderSetting("Zoom Level", "Zoom multiplier", 3.0f, 1.0f, 10.0f, 0.1f);
     // OPRAVENO: Přidáno 'f' ke všem číselným hodnotám pro konverzi na float
-    public static final SliderSetting smoothness = new SliderSetting("Smoothness", "Zoom smoothness", 0.28f, 0.01f, 1.0f, 0.01f);
+    public static final SliderSetting smoothness = new SliderSetting("Smoothness", "Zoom smoothness", 0.15f, 0.01f, 1.0f, 0.01f);
     public static final ColorSetting accentColor = new ColorSetting("Accent Color", "Zoom accent color", 0xFF00d4ff);
 
     private static double currentZoom = 1.0;
