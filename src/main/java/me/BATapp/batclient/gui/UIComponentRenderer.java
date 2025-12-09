@@ -82,7 +82,7 @@ public class UIComponentRenderer {
 
     public static void drawArc(DrawContext context, int centerX, int centerY, int radius, int startAngle, int endAngle, int color, int thickness) {
         for (int t = 0; t < thickness; t++) {
-            for (int i = startAngle; i <= endAngle; i++) {
+            for (double i = startAngle; i <= endAngle; i += 0.25) { // Increased resolution
                 double angle = Math.toRadians(i);
                 int x = (int) (centerX + Math.cos(angle) * (radius - t));
                 int y = (int) (centerY + Math.sin(angle) * (radius - t));

@@ -4,9 +4,10 @@
     <bytecodeTargetLevel target="21" />
   </component>
   <component name="JavacSettings">
-    <option name="ADDITIONAL_OPTIONS_STRING" value="-AoutRefMapFile=C:\Users\ferik\Desktop\BatClient-best\build\classes\java\main\BATclient-refmap.json -AdefaultObfuscationEnv=named:intermediary -Aquiet=true -AoutMapFileNamedIntermediary=C:\Users\ferik\Desktop\BatClient-best\build\loom-cache\mixin-map-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2.main.tiny -AinMapFileNamedIntermediary=C:\Users\ferik\.gradle\caches\fabric-loom\1.21.4\net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2\mappings.tiny" />
+    <option name="ADDITIONAL_OPTIONS_STRING" value="-AoutRefMapFile=C:\Users\ferik\Documents\GitHub\BatClient\build\classes\java\main\BATclient-refmap.json -AdefaultObfuscationEnv=named:intermediary -Aquiet=true -AoutMapFileNamedIntermediary=C:\Users\ferik\Documents\GitHub\BatClient\build\loom-cache\mixin-map-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2.main.tiny -AinMapFileNamedIntermediary=C:\Users\ferik\.gradle\caches\fabric-loom\1.21.4\net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2\mappings.tiny" />
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="BatClient-best.test" options="-AoutRefMapFile=C:\Users\ferik\Desktop\BatClient-best\build\classes\java\test\test-BATclient-refmap.json -AdefaultObfuscationEnv=named:intermediary -Aquiet=true -AoutMapFileNamedIntermediary=C:\Users\ferik\Desktop\BatClient-best\build\loom-cache\mixin-map-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2.test.tiny -AinMapFileNamedIntermediary=C:\Users\ferik\.gradle\caches\fabric-loom\1.21.4\net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2\mappings.tiny" />
+      <module name="BatClient.test" options="-AoutRefMapFile=C:\Users\ferik\Documents\GitHub\BatClient\build\classes\java\test\test-BATclient-refmap.json -AdefaultObfuscationEnv=named:intermediary -Aquiet=true -AoutMapFileNamedIntermediary=C:\Users\ferik\Documents\GitHub\BatClient\build\loom-cache\mixin-map-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2.test.tiny -AinMapFileNamedIntermediary=C:\Users\ferik\.gradle\caches\fabric-loom\1.21.4\net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2\mappings.tiny" />
     </option>
   </component>
 </project>
