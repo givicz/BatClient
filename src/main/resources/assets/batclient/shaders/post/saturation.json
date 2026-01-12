@@ -1,0 +1,29 @@
+{
+    "targets": [
+        "swap"
+    ],
+    "passes": [
+        {
+            "name": "batclient:saturation",
+            "intarget": "minecraft:main",
+            "outtarget": "swap",
+            "auxtargets": [
+                {
+                    "name": "DiffuseSampler",
+                    "id": "minecraft:main"
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "Saturation",
+                    "values": [ 1.0 ]
+                }
+            ]
+        },
+        {
+            "name": "blit",
+            "intarget": "swap",
+            "outtarget": "minecraft:main"
+        }
+    ]
+}

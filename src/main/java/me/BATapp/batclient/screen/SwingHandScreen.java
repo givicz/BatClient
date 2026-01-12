@@ -2,6 +2,7 @@ package me.BATapp.batclient.screen;
 
 import me.BATapp.batclient.config.ConfigurableModule;
 import me.BATapp.batclient.modules.SwingHand;
+import me.BATapp.batclient.utils.SmoothGraphics;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -27,38 +28,44 @@ public class SwingHandScreen extends Screen {
         super.init();
         int centerX = this.width / 2;
         int centerY = this.height / 2;
-        int startX = centerX - 75;
-        int startY = centerY - 120;
+        int panelHeight = 180;
+        int panelY = centerY - panelHeight / 2;
 
         // Save button
         this.addDrawableChild(ButtonWidget.builder(Text.of("Save & Close"), (button) -> {
             this.save();
             this.close();
-        }).dimensions(startX, startY, 150, 20).build());
+        }).dimensions(centerX - 75, panelY + panelHeight - 25, 150, 20).build());
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
-        super.render(context, mouseX, mouseY, delta);
-
+        
         int centerX = this.width / 2;
         int centerY = this.height / 2;
-        int startX = centerX - 75;
-        int startY = centerY - 120;
-        int y = startY + 30;
+        int panelWidth = 200;
+        int panelHeight = 180;
+        int panelX = centerX - panelWidth / 2;
+        int panelY = centerY - panelHeight / 2;
+
+        SmoothGraphics.drawRoundedRect(context, panelX, panelY, panelWidth, panelHeight, 8, 0xCC222222);
+        
+        super.render(context, mouseX, mouseY, delta);
+
+        int y = panelY + 8;
 
         context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("Swing Hand Animation Settings"), centerX, y, 0xFFFFFF);
-        y += 20;
-        context.drawTextWithShadow(this.textRenderer, Text.literal("X Pos: " + String.format("%.2f", SwingHand.xPos)), startX, y, 0xFFe0e0e0);
+        y += 25;
+        context.drawTextWithShadow(this.textRenderer, Text.literal("X Pos: " + String.format("%.2f", SwingHand.xPos)), panelX + 15, y, 0xFFe0e0e0);
         y += 15;
-        context.drawTextWithShadow(this.textRenderer, Text.literal("Y Pos: " + String.format("%.2f", SwingHand.yPos)), startX, y, 0xFFe0e0e0);
+        context.drawTextWithShadow(this.textRenderer, Text.literal("Y Pos: " + String.format("%.2f", SwingHand.yPos)), panelX + 15, y, 0xFFe0e0e0);
         y += 15;
-        context.drawTextWithShadow(this.textRenderer, Text.literal("Z Pos: " + String.format("%.2f", SwingHand.zPos)), startX, y, 0xFFe0e0e0);
+        context.drawTextWithShadow(this.textRenderer, Text.literal("Z Pos: " + String.format("%.2f", SwingHand.zPos)), panelX + 15, y, 0xFFe0e0e0);
         y += 15;
-        context.drawTextWithShadow(this.textRenderer, Text.literal("Scale: " + String.format("%.2f", SwingHand.scale)), startX, y, 0xFFe0e0e0);
+        context.drawTextWithShadow(this.textRenderer, Text.literal("Scale: " + String.format("%.2f", SwingHand.scale)), panelX + 15, y, 0xFFe0e0e0);
         y += 15;
-        context.drawTextWithShadow(this.textRenderer, Text.literal("Speed: " + SwingHand.speed), startX, y, 0xFFe0e0e0);
+        context.drawTextWithShadow(this.textRenderer, Text.literal("Speed: " + SwingHand.speed), panelX + 15, y, 0xFFe0e0e0);
     }
 
     private void save() {

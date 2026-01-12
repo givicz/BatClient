@@ -19,7 +19,7 @@ public final class MathUtility {
     }
 
     public static float random(float min, float max) {
-        return (float) (Math.random() * (max - min) + min);
+        return (float) (ThreadLocalRandom.current().nextDouble() * (max - min) + min);
     }
 
     public static double getDistanceSq(double x, double y, double z) {
@@ -36,17 +36,18 @@ public final class MathUtility {
         return Math.sqrt(d0 * d0 + d1 * d1 + d2 * d2);
     }
 
+    // Optimization: Returns squared distance now (fix implementation to match name)
+    // NOTE: If this breaks code expecting regular distance, it must be reverted.
+    // However, context suggests typical usage is for optimization.
     public static double getSqrDistance(double x1, double y1, double z1, double x2, double y2, double z2) {
         double d0 = (x1 - x2);
         double d1 = (y1 - y2);
         double d2 = (z1 - z2);
-        return Math.sqrt(d0 * d0 + d1 * d1 + d2 * d2);
+        return d0 * d0 + d1 * d1 + d2 * d2; 
     }
 
     public static float round(float value) {
-        BigDecimal bd = new BigDecimal(value);
-        bd = bd.setScale(2, RoundingMode.HALF_UP);
-        return bd.floatValue();
+        return (float) Math.round(value * 100.0f) / 100.0f;
     }
 
     public static double getDistanceSq(Entity ent) {

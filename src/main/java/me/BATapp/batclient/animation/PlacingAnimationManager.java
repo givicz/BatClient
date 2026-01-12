@@ -1,60 +1,53 @@
 package me.BATapp.batclient.animation;
 
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import me.BATapp.batclient.render.Render2D;
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.block.BlockState;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.*;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.screen.PlayerScreenHandler;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.random.Random;
 
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
- * Lightweight placing animation manager.
- * Stores active placing animations per-block and renders a smooth translucent overlay.
+ * Modern placing animation manager.
+ * Renders the actual block model with a Scale + Fade animation.
  */
 public final class PlacingAnimationManager {
 
-    private static final Map<BlockPos, PlacingAnimation> ACTIVE_ANIMATIONS = Maps.newConcurrentMap();
-    private static final Set<BlockPos> HIDDEN_BLOCKS = Sets.newCopyOnWriteArraySet();
+    private static final Map<BlockPos, Animation> animations = new ConcurrentHashMap<>();
+    private static final Set<BlockPos> hiddenBlocks = new CopyOnWriteArraySet<>();
 
     public static void addAnimation(net.minecraft.client.world.ClientWorld world, BlockState state, BlockPos pos, net.minecraft.entity.player.PlayerEntity placer, net.minecraft.util.Hand hand) {
         if (pos == null || world == null) return;
-        PlacingAnimation animation = new PlacingAnimation(pos, state, placer);
-        PlacingAnimation old = ACTIVE_ANIMATIONS.put(pos, animation);
-        if (old != null) {
-            // carry over progress to keep smooth
-            animation.progress = Math.max(animation.progress, old.progress);
-        }
+        animations.put(pos, new Animation(pos, state));
         hideBlock(pos);
     }
 
     public static void hideBlock(BlockPos pos) {
         if (pos == null) return;
-        HIDDEN_BLOCKS.add(pos);
+        hiddenBlocks.add(pos);
     }
 
     public static void showBlock(BlockPos pos, boolean removeAnimation) {
         if (pos == null) return;
-        if (HIDDEN_BLOCKS.remove(pos)) markBlockForRender(pos);
+        if (hiddenBlocks.remove(pos)) markBlockForRender(pos);
         if (removeAnimation) {
-            ACTIVE_ANIMATIONS.remove(pos);
+            animations.remove(pos);
         }
     }
 
     public static boolean isHidden(BlockPos pos) {
-        return pos != null && HIDDEN_BLOCKS.contains(pos);
+        return pos != null && hiddenBlocks.contains(pos);
     }
 
     private static void markBlockForRender(BlockPos pos) {
@@ -77,142 +70,110 @@ public final class PlacingAnimationManager {
     }
 
     public static void clear() {
-        Iterator<BlockPos> it = HIDDEN_BLOCKS.iterator();
+        Iterator<BlockPos> it = hiddenBlocks.iterator();
         while (it.hasNext()) {
             BlockPos p = it.next();
             showBlock(p, true);
         }
-        HIDDEN_BLOCKS.clear();
-        ACTIVE_ANIMATIONS.clear();
+        hiddenBlocks.clear();
+        animations.clear();
     }
 
     public static void tick() {
-        Iterator<Map.Entry<BlockPos, PlacingAnimation>> it = ACTIVE_ANIMATIONS.entrySet().iterator();
+        if (animations.isEmpty()) return;
         long now = System.currentTimeMillis();
+        Iterator<Map.Entry<BlockPos, Animation>> it = animations.entrySet().iterator();
         while (it.hasNext()) {
-            Map.Entry<BlockPos, PlacingAnimation> e = it.next();
-            PlacingAnimation a = e.getValue();
-            a.update(now);
-            if (a.isFinished()) {
+            Map.Entry<BlockPos, Animation> e = it.next();
+            Animation a = e.getValue();
+            if (a.isFinished(now)) {
                 it.remove();
-                HIDDEN_BLOCKS.remove(e.getKey());
+                hiddenBlocks.remove(e.getKey());
                 markBlockForRender(e.getKey());
             }
         }
     }
 
     public static void render(WorldRenderContext context) {
-        if (ACTIVE_ANIMATIONS.isEmpty()) return;
+        if (animations.isEmpty()) return;
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return;
+        if (mc.world == null || mc.player == null) return;
 
-        double camX = context.camera().getPos().x;
-        double camY = context.camera().getPos().y;
-        double camZ = context.camera().getPos().z;
+        Vec3d camPos = context.camera().getPos();
+        MatrixStack matrices = context.matrixStack();
 
-        MatrixStack ms = context.matrixStack();
-        for (PlacingAnimation a : ACTIVE_ANIMATIONS.values()) {
-            double x = a.pos.getX() - camX + 0.5;
-            double y = a.pos.getY() - camY + 0.5;
-            double z = a.pos.getZ() - camZ + 0.5;
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.enableCull();
+        RenderSystem.setShader(GameRenderer::getPositionColorTextureLightNormalProgram);
+        RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
 
-            ms.push();
-            ms.translate(x, y, z);
-            // apply slide/rotation/scale similar to FBP placing animation
-            float p = a.getProgress();
-            float slide = (1.0f - p) * a.slidePower; // slide from offset to zero
-            // translate slightly along player's forward (use angleY)
-            float dx = (float) (Math.sin(a.angleY) * slide);
-            float dz = (float) (Math.cos(a.angleY) * slide);
-            ms.translate(dx, -0.25f * (1.0f - p), dz);
-            // rotation around Y
-            ms.multiplyPositionMatrix(new org.joml.Matrix4f().rotationY(-a.angleY * (1.0f - p)));
-            float s = a.startScale + (1.0f - a.startScale) * p;
-            ms.scale(s, s, s);
+        Tessellator tessellator = Tessellator.getInstance();
+        long now = System.currentTimeMillis();
 
-            Render2D.setupRender();
-            // draw translucent colored cube overlay with eased alpha
-            RenderSystem.disableDepthTest();
-            RenderSystem.enableBlend();
-            RenderSystem.blendFuncSeparate(770, 1, 1, 0);
-            java.awt.Color c = new java.awt.Color(0x00d4ff);
-            int r = c.getRed();
-            int g = c.getGreen();
-            int b = c.getBlue();
-            int aByte = (int) (180 * (1.0f - (1.0f - p) * 0.6f));
+        for (Animation anim : animations.values()) {
+            matrices.push();
+            matrices.translate(anim.pos.getX() - camPos.x, anim.pos.getY() - camPos.y, anim.pos.getZ() - camPos.z);
 
-            BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-            var m = ms.peek();
-            float half = 0.5f;
-            buffer.vertex(m.getPositionMatrix(), -half, -half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, -half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, -half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, -half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, -half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, -half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, -half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, -half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, -half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, -half, -half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), half, -half, half).color(r, g, b, aByte);
-            buffer.vertex(m.getPositionMatrix(), -half, -half, half).color(r, g, b, aByte);
+            float progress = anim.getProgress(now);
+            
+            // Animation: Scale from center
+            matrices.translate(0.5, 0.5, 0.5);
+            // Elastic-like scale or Smooth Step
+            float scale = easeOutBack(progress);
+            matrices.scale(scale, scale, scale);
+            matrices.translate(-0.5, -0.5, -0.5);
 
-            BufferRenderer.drawWithGlobalProgram(buffer.end());
+            // Fade in
+            RenderSystem.setShaderColor(1f, 1f, 1f, Math.min(1f, progress * 1.5f)); // Fade in slightly faster than scale
 
-            Render2D.endRender();
-            ms.pop();
+            BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR_TEXTURE_LIGHT_NORMAL);
+            
+            mc.getBlockRenderManager().renderBlock(
+                    anim.state,
+                    anim.pos,
+                    mc.world,
+                    matrices,
+                    buffer,
+                    false,
+                    Random.create()
+            );
+
+            try {
+                BufferRenderer.drawWithGlobalProgram(buffer.end());
+            } catch (Exception ignored) {}
+            
+            matrices.pop();
         }
+
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        RenderSystem.disableBlend();
     }
 
-    private static class PlacingAnimation {
+    private static float easeOutBack(float x) {
+        float c1 = 1.70158f;
+        float c3 = c1 + 1;
+        return 1 + c3 * (float)Math.pow(x - 1, 3) + c1 * (float)Math.pow(x - 1, 2);
+    }
+    
+    private static class Animation {
         final BlockPos pos;
         final BlockState state;
-        final long startMs;
-        float progress = 0f;
-        final long durationMs = 600L; // smooth place animation duration
+        final long startTime;
+        final long duration = 250L; // 250ms fast animation
 
-        // slide / rotation fields
-        final float angleY;
-        final float slidePower;
-        final float startScale;
-        float currentProgress = 0f;
-
-        PlacingAnimation(BlockPos pos, BlockState state, net.minecraft.entity.player.PlayerEntity placer) {
+        Animation(BlockPos pos, BlockState state) {
             this.pos = pos;
             this.state = state;
-            this.startMs = System.currentTimeMillis();
-            // derive simple angle from player look so animation direction feels natural
-            float yaw = placer == null ? 0f : placer.getYaw();
-            this.angleY = (float) Math.toRadians(yaw);
-            this.slidePower = 0.4f + (float) (Math.random() * 0.4);
-            this.startScale = 0.8f;
+            this.startTime = System.currentTimeMillis();
         }
 
-        void update(long now) {
-            this.progress = Math.min(1f, (now - startMs) / (float) durationMs);
-            // smooth progress easing
-            this.currentProgress = exponent(-0.7f, this.progress);
+        float getProgress(long now) {
+            return Math.min(1f, (now - startTime) / (float) duration);
         }
 
-        float getProgress() { return currentProgress; }
-
-        boolean isFinished() { return progress >= 1f; }
-
-        private float exponent(float curve, float time) {
-            double base = curve > 0.0F ? -Math.log((double)curve) : Math.log((double)(-curve)) - 1.0D;
-            return (float)(base * Math.pow(1.0D / base + 1.0D, (double)time) - base);
+        boolean isFinished(long now) {
+            return (now - startTime) >= duration;
         }
     }
 }

@@ -8,4 +8,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface GameRendererAccessor {
     @Accessor("floatingItemTimeLeft")
     int getFloatingItemTimeLeft();
+
+    @Accessor("postProcessor")
+    net.minecraft.client.gl.PostEffectProcessor getPostProcessor();
 }

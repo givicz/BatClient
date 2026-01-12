@@ -7,6 +7,7 @@ import me.BATapp.batclient.modules.Freecam;
 import me.BATapp.batclient.modules.Freelook;
 import me.BATapp.batclient.modules.TargetHud;
 import me.BATapp.batclient.modules.Zoom;
+import me.BATapp.batclient.modules.Saturation;
 import me.BATapp.batclient.render.TargetHudRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -31,6 +32,11 @@ import static me.BATapp.batclient.config.ConfigurableModule.CONFIG;
 
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
+
+    @Inject(method = "render", at = @At("HEAD"))
+    public void onRenderHook(RenderTickCounter tickCounter, boolean tick, CallbackInfo ci) {
+        Saturation.onRender((GameRenderer)(Object)this);
+    }
 
     @Unique
     private Color floatingTotemColor = null;

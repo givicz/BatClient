@@ -1,5 +1,6 @@
 package me.BATapp.batclient.gui;
 
+import me.BATapp.batclient.utils.SmoothGraphics;
 import me.BATapp.batclient.utils.UIElementManager;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -61,8 +62,12 @@ public class UICustomizationScreen extends Screen {
         
         // Vykreslíme moderní pozadí
         int backgroundColor = 0xCC222222; // Stejné jako v našem tématu
-        UIComponentRenderer.drawRoundedRect(context, 5, 5, this.width - 10, this.height - 10, 8, backgroundColor);
-        UIComponentRenderer.drawRoundedBorder(context, 5, 5, this.width - 10, this.height - 10, 8, 0xFF00BFFF, 2);
+        int borderColor = 0xFF00BFFF; // Accent color
+        int radius = 8;
+        int borderThickness = 2;
+
+        SmoothGraphics.drawRoundedRect(context, 5, 5, this.width - 10, this.height - 10, radius, borderColor); // Border
+        SmoothGraphics.drawRoundedRect(context, 5 + borderThickness, 5 + borderThickness, this.width - 10 - (borderThickness * 2), this.height - 10 - (borderThickness * 2), radius - borderThickness, backgroundColor); // Background
         
         // Title
         context.drawCenteredTextWithShadow(this.textRenderer, "UI Customization", 

@@ -49,14 +49,17 @@ public class PerformanceOptimizer extends SoupModule {
         Vec3d currentPos = player.getPos();
         float currentYaw = player.getYaw();
         float currentPitch = player.getPitch();
-        double posDistance = currentPos.distanceTo(lastPlayerPos);
+        
+        // Optimization: Use squared distance to avoid sqrt
+        double posDistanceSq = currentPos.squaredDistanceTo(lastPlayerPos);
         double yawDiff = Math.abs(currentYaw - lastPlayerYaw);
         double pitchDiff = Math.abs(currentPitch - lastPlayerPitch);
         long timeSinceLastPacket = System.currentTimeMillis() - lastPacketTime;
         long afkThresholdMs = (long) (afkTime.getValue() * 1000.0f);
 
         // Check for actual activity: position change OR camera rotation (yaw/pitch)
-        boolean hasMovement = posDistance > 0.01 || yawDiff > 0.5 || pitchDiff > 0.5;
+        // 0.01 * 0.01 = 0.0001
+        boolean hasMovement = posDistanceSq > 0.0001 || yawDiff > 0.5 || pitchDiff > 0.5;
 
         if (hasMovement) {
             // Player moved or looked around

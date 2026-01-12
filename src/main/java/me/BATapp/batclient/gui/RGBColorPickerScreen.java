@@ -1,5 +1,7 @@
 package me.BATapp.batclient.gui;
 
+import me.BATapp.batclient.gui.BATSettingsScreen;
+import me.BATapp.batclient.utils.SmoothGraphics;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -102,8 +104,8 @@ public class RGBColorPickerScreen extends Screen {
         int y = (this.height - 300) / 2;
         
         // Background
-        UIComponentRenderer.drawRoundedRect(context, x, y, 250, 300, 8, BATSettingsScreen.COLOR_PRIMARY);
-        UIComponentRenderer.drawRoundedBorder(context, x, y, 250, 300, 8, BATSettingsScreen.COLOR_ACCENT, 2);
+        SmoothGraphics.drawRoundedRect(context, x, y, 250, 300, 8, BATSettingsScreen.COLOR_ACCENT); // Border
+        SmoothGraphics.drawRoundedRect(context, x + 2, y + 2, 250 - 4, 300 - 4, 8 - 2, BATSettingsScreen.COLOR_PRIMARY); // Background
         
         context.drawText(MinecraftClient.getInstance().textRenderer, "RGB Color Picker", x + 10, y + 10, BATSettingsScreen.COLOR_TEXT, false);
         
@@ -150,15 +152,15 @@ public class RGBColorPickerScreen extends Screen {
         int huePos = paletteX + (int)(hueSlider * PALETTE_WIDTH);
         
         context.drawText(MinecraftClient.getInstance().textRenderer, "Hue", x + 10, sliderY - 15, BATSettingsScreen.COLOR_TEXT, false);
-        UIComponentRenderer.drawRoundedRect(context, paletteX, sliderY, PALETTE_WIDTH, SLIDER_HEIGHT, 4, BATSettingsScreen.COLOR_SECONDARY);
-        UIComponentRenderer.drawRoundedRect(context, huePos - 2, sliderY - 2, 4, SLIDER_HEIGHT + 4, 2, BATSettingsScreen.COLOR_HIGHLIGHT);
+        SmoothGraphics.drawRoundedRect(context, paletteX, sliderY, PALETTE_WIDTH, SLIDER_HEIGHT, 4, BATSettingsScreen.COLOR_SECONDARY);
+        SmoothGraphics.drawRoundedRect(context, huePos - 2, sliderY - 2, 4, SLIDER_HEIGHT + 4, 2, BATSettingsScreen.COLOR_HIGHLIGHT);
         
         // Current color preview
         int previewY = sliderY + 40;
         int previewX = x + 20;
-        UIComponentRenderer.drawRoundedRect(context, previewX, previewY, 100, 40, 4, BATSettingsScreen.COLOR_SECONDARY);
+        SmoothGraphics.drawRoundedRect(context, previewX, previewY, 100, 40, 4, BATSettingsScreen.COLOR_SECONDARY);
         currentColor = 0xFF000000 | (r << 16) | (g << 8) | b;
-        UIComponentRenderer.drawRoundedRect(context, previewX + 2, previewY + 2, 96, 36, 3, currentColor);
+        SmoothGraphics.drawRoundedRect(context, previewX + 2, previewY + 2, 96, 36, 3, currentColor);
         
         // RGB display
         context.drawText(MinecraftClient.getInstance().textRenderer, 
@@ -169,11 +171,11 @@ public class RGBColorPickerScreen extends Screen {
         int buttonY = previewY + 50;
         
         // Accept button
-        UIComponentRenderer.drawRoundedRect(context, previewX, buttonY, 100, 25, 4, BATSettingsScreen.COLOR_HIGHLIGHT);
+        SmoothGraphics.drawRoundedRect(context, previewX, buttonY, 100, 25, 4, BATSettingsScreen.COLOR_HIGHLIGHT);
         context.drawText(MinecraftClient.getInstance().textRenderer, "OK", previewX + 45, buttonY + 8, BATSettingsScreen.COLOR_PRIMARY, false);
         
         // Cancel button
-        UIComponentRenderer.drawRoundedRect(context, previewX + 110, buttonY, 100, 25, 4, BATSettingsScreen.COLOR_ACCENT);
+        SmoothGraphics.drawRoundedRect(context, previewX + 110, buttonY, 100, 25, 4, BATSettingsScreen.COLOR_ACCENT);
         context.drawText(MinecraftClient.getInstance().textRenderer, "Cancel", previewX + 135, buttonY + 8, BATSettingsScreen.COLOR_TEXT, false);
     }
 

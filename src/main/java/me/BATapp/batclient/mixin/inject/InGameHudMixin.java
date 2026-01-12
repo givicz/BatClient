@@ -395,30 +395,24 @@ public abstract class InGameHudMixin {
             c3 = Palette.getColor(0.66f);
             c4 = Palette.getColor(1f);
         }
-        Color[] hotbarColors = getRotatingColors(hotbarColorAnimationProgress, c1, c2, c3, c4);
-        Color hotbarTopLeft = hotbarColors[0];
-        Color hotbarTopRight = hotbarColors[1];
-        Color hotbarBottomRight = hotbarColors[2];
-        Color hotbarBottomLeft = hotbarColors[3];
 
         MatrixStack stack = context.getMatrices();
         stack.push();
         stack.translate(0.0F, 0.0F, -90.0F);
 
-        int cornerRadius = 2;
-        int glowStrength = 8;
+        int cornerRadius = 5;
         int hotbarWidth = 178;
         int halfBar = hotbarWidth / 2;
         int hotbarX = halfWidth - halfBar;
-        int hotbarY = context.getScaledWindowHeight() - 22 - yOffset;
+        int hotbarY = context.getScaledWindowHeight() - 25 - yOffset;
 
-        Render2D.drawGradientBlurredShadow1(stack, hotbarX - 0.5f, hotbarY + 1, hotbarWidth + 1, 19, glowStrength, hotbarBottomLeft, hotbarBottomRight, hotbarTopRight, hotbarTopLeft);
-        if (isLBStyle) {
-            Render2D.drawRound(stack, hotbarX - 0.5f, hotbarY + 1, hotbarWidth + 1, 19, cornerRadius, Palette.getBackColor());
-        } else {
-            Render2D.renderRoundedGradientRect(stack, hotbarTopLeft, hotbarTopRight, hotbarBottomRight, hotbarBottomLeft, hotbarX - 0.5f, hotbarY + 1, hotbarWidth + 1, 19, cornerRadius);
-            Render2D.drawRound(stack, hotbarX - 0.5f, hotbarY + 1, hotbarWidth + 1, 19, cornerRadius, Palette.getBackColor());
-        }
+        // Dark Liquid Glass Background
+        // Use a dark color with high alpha (e.g., 20, 20, 20, 200)
+        Color liquidGlass = new Color(10, 10, 10, 220); 
+        Render2D.drawRound(stack, hotbarX - 2, hotbarY, hotbarWidth + 4, 24, cornerRadius, liquidGlass);
+        
+        // Optional: Add a subtle white outline or shine for "glass" effect
+        // Render2D.drawOutline(stack, hotbarX - 2, hotbarY, hotbarWidth + 4, 24, cornerRadius, 1f, new Color(255, 255, 255, 30));
 
         float animatedX;
         if (BetterHudStyles.betterHotbarSmoothScroll.getValue()) {
@@ -429,21 +423,22 @@ public abstract class InGameHudMixin {
             animatedX = halfWidth - 90 + (targetSlot * 20);
         }
 
-        int selectedSlotY = context.getScaledWindowHeight() - 22 - yOffset;
-        if (isLBStyle) {
-            Render2D.renderRoundedGradientRect(stack, hotbarTopLeft, hotbarTopRight, hotbarBottomRight, hotbarBottomLeft, animatedX, selectedSlotY + 0.5f, 20, 20, cornerRadius);
-            Render2D.drawRound(stack, animatedX + 1f, selectedSlotY + 1.5f, 18, 18, cornerRadius, Palette.getBackColor());
-        } else {
-            Render2D.drawRound(stack, animatedX + 1f, selectedSlotY + 1.5f, 18, 18, cornerRadius, Palette.getBackColor());
-        }
+        int selectedSlotY = context.getScaledWindowHeight() - 25 - yOffset;
+        
+        // Selection Indicator - Lighter "glass"
+        Color selectionColor = new Color(200, 200, 200, 40);
+        Color selectionOutline = new Color(255, 255, 255, 100);
+        
+        Render2D.drawRound(stack, animatedX + 1f, selectedSlotY + 2f, 20, 20, cornerRadius - 1, selectionColor);
+        Render2D.renderRoundedQuadInternal(stack.peek().getPositionMatrix(), 1, 1, 1, 0.2f, animatedX + 1f, selectedSlotY + 2f, animatedX + 21f, selectedSlotY + 22f, cornerRadius - 1, 1f);
+
 
         // Слот для левой руки
         if (!offHandStack.isEmpty()) {
-            float offhandX = halfWidth - halfBar - 25.5f;
-            int offhandY = context.getScaledWindowHeight() - 25;
-            Render2D.drawGradientBlurredShadow1(stack, offhandX, offhandY, 19, 19, glowStrength, hotbarBottomLeft, hotbarBottomRight, hotbarTopRight, hotbarTopLeft);
-            Render2D.renderRoundedGradientRect(stack, hotbarTopLeft, hotbarTopRight, hotbarBottomRight, hotbarBottomLeft, offhandX, offhandY, 19, 19, cornerRadius);
-            Render2D.drawRound(stack, offhandX + 0.5f, offhandY + 0.5f, 18, 18, cornerRadius, Palette.getBackColor());
+            float offhandX = halfWidth - halfBar - 28.5f;
+            int offhandY = context.getScaledWindowHeight() - 25 - yOffset;
+            Render2D.drawRound(stack, offhandX, offhandY, 24, 24, cornerRadius, liquidGlass);
+            // Selection not needed for offhand usually, or maybe a border
         }
 
         int dummy = 1;

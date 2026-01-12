@@ -21,7 +21,12 @@ public abstract class SoupModule {
         this.category = category;
     }
 
+    private List<Setting<?>> cachedSettings;
+
     public List<Setting<?>> getSettings() {
+        if (cachedSettings != null) {
+            return cachedSettings;
+        }
         List<Setting<?>> result = new ArrayList<>();
         for (Field field : this.getClass().getDeclaredFields()) {
             if (!Setting.class.isAssignableFrom(field.getType())) continue;
@@ -36,6 +41,7 @@ public abstract class SoupModule {
                 e.printStackTrace();
             }
         }
+        cachedSettings = result;
         return result;
     }
 

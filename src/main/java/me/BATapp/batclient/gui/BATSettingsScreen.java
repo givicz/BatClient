@@ -7,36 +7,33 @@ import me.BATapp.batclient.gui.settings.*;
 import me.BATapp.batclient.modules.*;
 import me.BATapp.batclient.settings.Setting;
 import me.BATapp.batclient.settings.impl.*;
+import me.BATapp.batclient.utils.SmoothGraphics;
 import net.minecraft.client.MinecraftClient;
-import me.BATapp.batclient.gui.RGBColorPickerScreen;
-import me.BATapp.batclient.config.ConfigSaver;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
+import net.minecraft.util.math.MathHelper;
+import org.lwjgl.glfw.GLFW;
 
+import java.awt.Color;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class BATSettingsScreen extends Screen {
 
     private final Map<SoupModule.Category, List<SoupModule>> modulesByCategory;
     private final Map<Setting<?>, SettingComponent<?>> settingComponents = new HashMap<>();
 
-    private SoupModule.Category selectedCategory = SoupModule.Category.WORLD;
-    private SoupModule selectedModule = null;
-    private boolean themeMode = false;
+    private SoupModule.Category selectedCategory = null; // null = ALL
+    private SoupModule selectedModule = null; // For settings overlay
+    private String searchQuery = "";
+    private boolean isTypingSearch = false;
 
-    // Screen dimensions
-    public int screenWidth = 500;
-    public int screenHeight = 300;
+    // Screen dimensions & Position (Centered default)
+    public int screenWidth = 600;
+    public int screenHeight = 350;
     public int screenX;
     public int screenY;
-
-    // Dragging
-    private boolean isDragging = false;
-    private int dragOffsetX = 0;
-    private int dragOffsetY = 0;
-    private int customX = -1;
-    private int customY = -1;
 
     // Animation
     private float scaleAnimation = 0.8f;
@@ -44,15 +41,19 @@ public class BATSettingsScreen extends Screen {
     private static final float ANIMATION_SPEED = 0.1f;
     private static final float ALPHA_SPEED = 0.12f;
 
-    // Color settings
-    public static int COLOR_PRIMARY = 0xFF222222;
-    public static int COLOR_SECONDARY = 0xFF333333;
-    public static int COLOR_ACCENT = 0xFF008FCC;
-    public static int COLOR_HIGHLIGHT = 0xFF00BFFF;
-    public static int COLOR_TEXT = 0xFFFFFFFF;
-    public static int COLOR_TEXT_DARK = 0xFFCCCCCC;
-    public static final int BORDER_RADIUS = 6;
-    public static final int HEADER_HEIGHT = 27;
+    // Scroll
+    private float scrollY = 0;
+    private float targetScrollY = 0;
+    private float maxScroll = 0;
+
+    // Colors
+    private static final int COLOR_BG = 0xFF141414;
+    private static final int COLOR_CARD_BG = 0xFF1E1E1E;
+    private static final int COLOR_CARD_HOVER = 0xFF252525;
+    private static final int COLOR_PRIMARY_RED = 0xFFFF4D4D; // Red for "MOD MENU"
+    private static final int COLOR_ACCENT_GREEN = 0xFF2ECC71;
+    private static final int COLOR_TEXT_WHITE = 0xFFFFFFFF;
+    private static final int COLOR_TEXT_GRAY = 0xFFAAAAAA;
 
     private static final List<SoupModule> ALL_MODULES = new ArrayList<>();
 
@@ -71,599 +72,541 @@ public class BATSettingsScreen extends Screen {
         ALL_MODULES.add(new me.BATapp.batclient.modules.Saturation());
         ALL_MODULES.add(new Keystroke());
         ALL_MODULES.add(new Zoom());
-        // Hotbar handled by BetterHudStyles
+        ALL_MODULES.add(new TargetRender());
+        ALL_MODULES.add(new TargetHud());
+        ALL_MODULES.add(new HitParticles());
+        ALL_MODULES.add(new HitColor());
+        ALL_MODULES.add(new HitBubbles());
+        ALL_MODULES.add(new HitSound());
+        ALL_MODULES.add(new Halo());
+        ALL_MODULES.add(new ChinaHat());
+        ALL_MODULES.add(new Trails());
+        ALL_MODULES.add(new Trajectories());
+        // Add other modules as needed
     }
 
     public BATSettingsScreen() {
         super(Text.literal("BAT CLIENT"));
-
         this.modulesByCategory = new EnumMap<>(SoupModule.Category.class);
         for (SoupModule.Category cat : SoupModule.Category.values()) {
             modulesByCategory.put(cat, new ArrayList<>());
         }
         for (SoupModule module : ALL_MODULES) {
+            if (module.getCategory() == null) continue;
             modulesByCategory.get(module.getCategory()).add(module);
         }
-
         ConfigManager.loadConfig();
     }
 
     @Override
     public void init() {
         super.init();
-        // Centrujeme screen když se otevře
-        if (customX == -1 && customY == -1) {
-            customX = (this.width - screenWidth) / 2;
-            customY = (this.height - screenHeight) / 2;
+        screenX = (this.width - screenWidth) / 2;
+        screenY = (this.height - screenHeight) / 2;
+        
+        // Ensure screen fits nicely
+        if (this.width < screenWidth) {
+            screenWidth = this.width - 20;
+            screenX = 10;
         }
-
-        // Load screen position
-        customX = (int) ConfigSaver.getInt("screen.x", -1);
-        customY = (int) ConfigSaver.getInt("screen.y", -1);
-
-        String savedCategory = ConfigManager.getMetadata("selectedCategory");
-        String savedModule = ConfigManager.getMetadata("selectedModule");
-
-        if (savedCategory != null) {
-            try {
-                selectedCategory = SoupModule.Category.valueOf(savedCategory);
-            } catch (IllegalArgumentException ignored) {}
+        if (this.height < screenHeight) {
+            screenHeight = this.height - 20;
+            screenY = 10;
         }
-
-        if (savedModule != null) {
-            for (SoupModule mod : ALL_MODULES) {
-                if (mod.getClass().getSimpleName().equals(savedModule)) {
-                    selectedModule = mod;
-                    break;
-                }
-            }
-        }
-    }
-
-    private String getModuleName(SoupModule mod) {
-        return switch (mod.getClass().getSimpleName()) {
-            case "AmbientParticle" -> "Ambient Particles";
-            case "AspectRatio" -> "Aspect Ratio";
-            case "BetterHudStyles" -> "Better HUD";
-            case "Capes" -> "Capes";
-            case "CustomFog" -> "Custom Fog";
-            case "FullBright" -> "Full Bright";
-            case "JumpCircles" -> "Jump Circles";
-            case "ChinaHat" -> "China Hat";
-            case "Freecam" -> "Freecam";
-            case "Freelook" -> "Freelook";
-            case "PerformanceOptimizer" -> "Performance Optimizer";
-            case "Zoom" -> "Zoom";
-            case "Hotbar" -> "Hotbar";
-            default -> mod.getDisplayName().getString();
-        };
-    }
-
-    public static List<SoupModule> getAllModules() {
-        return ALL_MODULES;
     }
 
     @Override
     public void tick() {
         super.tick();
-
-        // Scale animation - start at 0.8 and grow to 1.0
         float scaleTarget = 1.0f;
         scaleAnimation += (scaleTarget - scaleAnimation) * ANIMATION_SPEED;
-
-        // Alpha animation - fade in from 0 to 1
         float alphaTarget = 1.0f;
         alphaAnimation += (alphaTarget - alphaAnimation) * ALPHA_SPEED;
+        
+        scrollY = MathHelper.lerp(0.2f, scrollY, targetScrollY);
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        renderBackground(context, mouseX, mouseY, delta); // Default dark BG
 
-        // Calculate screen position
-        if (customX == -1 && customY == -1) {
-            screenX = (this.width - screenWidth) / 2;
-            screenY = (this.height - screenHeight) / 2;
-        } else {
-            screenX = customX;
-            screenY = customY;
-        }
-
-        // Draw with scale animation
-        int centerX = screenX + screenWidth / 2;
-        int centerY = screenY + screenHeight / 2;
+        int alpha = (int) (alphaAnimation * 255);
+        int alphaColor = alpha << 24;
 
         context.getMatrices().push();
+        // Animation scale from center
+        float centerX = screenX + screenWidth / 2.0f;
+        float centerY = screenY + screenHeight / 2.0f;
         context.getMatrices().translate(centerX, centerY, 0);
         context.getMatrices().scale(scaleAnimation, scaleAnimation, 1.0f);
         context.getMatrices().translate(-centerX, -centerY, 0);
 
-        // Draw menu panel with alpha fade in
-        int alphaColor = (int) (alphaAnimation * 255) << 24;
-        int primaryWithAlpha = (COLOR_PRIMARY & 0xFFFFFF) | (alphaColor & 0xFF000000);
-        fillRounded(context, screenX, screenY, screenX + screenWidth, screenY + screenHeight, BORDER_RADIUS, primaryWithAlpha);
+        // Main Background
+        // Shadow effect
+        SmoothGraphics.drawRoundedRect(context, screenX - 5, screenY - 5, screenWidth + 10, screenHeight + 10, 15, 0x55000000);
+        SmoothGraphics.drawRoundedRect(context, screenX, screenY, screenWidth, screenHeight, 10, COLOR_BG | alphaColor);
 
-        int accentWithAlpha = (COLOR_ACCENT & 0xFFFFFF) | (alphaColor & 0xFF000000);
-        drawBorder(context, screenX, screenY, screenX + screenWidth, screenY + screenHeight, BORDER_RADIUS, accentWithAlpha, 2);
+        // Top Bar
+        renderTopBar(context, mouseX, mouseY, alphaColor);
 
-        // Draw title with fade in
-        int highlightWithAlpha = (COLOR_HIGHLIGHT & 0xFFFFFF) | (alphaColor & 0xFF000000);
-        context.drawText(MinecraftClient.getInstance().textRenderer, "SETTINGS", screenX + 15, screenY + 10, highlightWithAlpha, false);
+        // Filters Bar
+        renderFilters(context, mouseX, mouseY, alphaColor);
 
-        int contentY = screenY + HEADER_HEIGHT + 5;
-        int contentHeight = screenHeight - HEADER_HEIGHT - 10;
-
-        // Left: Categories
-        int catX = screenX + 10;
-        int catWidth = 120;
-        renderCategories(context, catX, contentY, catWidth, contentHeight, mouseX, mouseY);
-
-        // Middle: Modules
-        int modX = catX + catWidth + 8;
-        int modWidth = 120;
-
-        if (themeMode) {
-            renderThemeSettings(context, modX, contentY, modWidth, contentHeight, mouseX, mouseY);
+        // Grid Content
+        if (selectedModule == null) {
+            renderModuleGrid(context, mouseX, mouseY, delta, alphaColor);
         } else {
-            renderModules(context, modX, contentY, modWidth, contentHeight, mouseX, mouseY);
-
-            // Right: Settings
-            int setX = modX + modWidth + 8;
-            int setWidth = screenX + screenWidth - setX - 10;
-
-            if (selectedModule != null) {
-                renderSettings(context, setX, contentY, setWidth, contentHeight, mouseX, mouseY);
-            }
+            // Render settings overlay for selected module
+            renderModuleGrid(context, mouseX, mouseY, delta, alphaColor); // Draw grid behind dimmed
+            context.fill(screenX, screenY, screenX + screenWidth, screenY + screenHeight, 0xCC000000); // Dim overlay
+            renderSettingsOverlay(context, mouseX, mouseY, alphaColor);
         }
 
         context.getMatrices().pop();
-
-        // Drag indicator
-        if (isDragging) {
-            float centerLineX = screenX + screenWidth / 2;
-            float centerLineY = screenY + screenHeight / 2;
-            context.fill((int)centerLineX - 1, screenY, (int)centerLineX + 1, screenY + screenHeight, 0x88FFFFFF);
-            context.fill(screenX, (int)centerLineY - 1, screenX + screenWidth, (int)centerLineY + 1, 0x88FFFFFF);
-        }
-
-        // **ODEBRÁN ŘÁDEK super.render(context, mouseX, mouseY, delta); PRO ODSTRANĚNÍ BLURU**
     }
 
-    private void renderCategories(DrawContext context, int x, int y, int width, int height, int mouseX, int mouseY) {
-        fillRounded(context, x, y, x + width, y + height, BORDER_RADIUS, COLOR_SECONDARY);
-        drawBorder(context, x, y, x + width, y + height, BORDER_RADIUS, COLOR_ACCENT, 1);
+    private void renderTopBar(DrawContext context, int mouseX, int mouseY, int alphaColor) {
+        int x = screenX + 20;
+        int y = screenY + 20;
 
-        context.drawText(MinecraftClient.getInstance().textRenderer, "Categories", x + 8, y + 6, COLOR_TEXT, false);
+        // "MOD MENU" Red Button
+        SmoothGraphics.drawRoundedRect(context, x, y, 100, 30, 6, COLOR_PRIMARY_RED | alphaColor);
+        context.drawCenteredTextWithShadow(textRenderer, "MOD MENU", x + 50, y + 11, COLOR_TEXT_WHITE | alphaColor);
 
-        int itemY = y + 20;
-        int itemHeight = 16;
-        int itemPadding = 3;
+        // Search Bar (Right side)
+        int searchW = 180;
+        int searchX = screenX + screenWidth - 20 - searchW;
+        int searchH = 30;
+        int searchBg = isTypingSearch ? 0xFF353535 : 0xFF2A2A2A;
+        SmoothGraphics.drawRoundedRect(context, searchX, y, searchW, searchH, 6, searchBg | alphaColor);
+        
+        String searchText = searchQuery.isEmpty() && !isTypingSearch ? "Search..." : searchQuery + (isTypingSearch && (System.currentTimeMillis() / 500 % 2 == 0) ? "_" : "");
+        int textColor = searchQuery.isEmpty() && !isTypingSearch ? COLOR_TEXT_GRAY : COLOR_TEXT_WHITE;
+        context.drawText(textRenderer, searchText, searchX + 10, y + 11, textColor | alphaColor, false);
+    }
 
-        // Theme
-        boolean themeSelected = themeMode;
-        boolean themeHovered = mouseX >= x + itemPadding && mouseX <= x + width - itemPadding &&
-                mouseY >= itemY && mouseY <= itemY + itemHeight;
+    private void renderFilters(DrawContext context, int mouseX, int mouseY, int alphaColor) {
+        int startX = screenX + 130;
+        int y = screenY + 20;
+        int btnH = 30;
+        int gap = 10;
+        
+        List<String> filters = new ArrayList<>();
+        filters.add("All");
+        for(SoupModule.Category c : SoupModule.Category.values()) {
+            filters.add(c.name().charAt(0) + c.name().substring(1).toLowerCase());
+        }
 
-        int themeBg = themeSelected ? COLOR_HIGHLIGHT : (themeHovered ? COLOR_ACCENT : 0xFF333333);
-        int themeText = themeSelected ? COLOR_PRIMARY : COLOR_TEXT;
-
-        fillRounded(context, x + itemPadding, itemY, x + width - itemPadding, itemY + itemHeight, 3, themeBg);
-        // draw theme icon (scaled automatically)
-        me.BATapp.batclient.render.Render2D.drawIcon(context.getMatrices(), me.BATapp.batclient.utils.TexturesManager.GUI_BUCKET, x + 6, itemY + 2, 12);
-        context.drawText(MinecraftClient.getInstance().textRenderer, "Theme", x + 22, itemY + 4, themeText, false);
-        itemY += itemHeight + 3;
-
-        // Categories
-        for (SoupModule.Category cat : SoupModule.Category.values()) {
-            if (itemY >= y + height - 3) break;
-
-            boolean selected = cat == selectedCategory;
-            boolean hovered = mouseX >= x + itemPadding && mouseX <= x + width - itemPadding &&
-                    mouseY >= itemY && mouseY <= itemY + itemHeight;
-
-            int itemColor = selected ? COLOR_HIGHLIGHT : (hovered ? COLOR_ACCENT : 0xFF333333);
-            int textColor = selected ? COLOR_PRIMARY : COLOR_TEXT;
-
-            fillRounded(context, x + itemPadding, itemY, x + width - itemPadding, itemY + itemHeight, 3, itemColor);
-            String catName = cat.name().charAt(0) + cat.name().substring(1).toLowerCase();
-            // draw category icon next to text for some categories
-            int iconX = x + 6;
-            int iconY = itemY + 2;
-            switch (cat) {
-                case HUD -> me.BATapp.batclient.render.Render2D.drawIcon(context.getMatrices(), me.BATapp.batclient.utils.TexturesManager.GUI_ARMOR, iconX, iconY, 12);
-                case WORLD -> me.BATapp.batclient.render.Render2D.drawIcon(context.getMatrices(), me.BATapp.batclient.utils.TexturesManager.GUI_GLOBAL, iconX, iconY, 12);
-                case OTHER -> me.BATapp.batclient.render.Render2D.drawIcon(context.getMatrices(), me.BATapp.batclient.utils.TexturesManager.GUI_OTHER, iconX, iconY, 12);
-                default -> { }
+        int currentX = startX;
+        for (String filter : filters) {
+            int width = textRenderer.getWidth(filter) + 20;
+            // Check if selected
+            boolean selected = false;
+            if (filter.equals("All")) {
+                selected = selectedCategory == null;
+            } else {
+                selected = selectedCategory != null && filter.equalsIgnoreCase(selectedCategory.name());
             }
-            context.drawText(MinecraftClient.getInstance().textRenderer, catName, x + 22, itemY + 4, textColor, false);
 
-            itemY += itemHeight + 3;
+            boolean hovered = mouseX >= currentX && mouseX <= currentX + width && mouseY >= y && mouseY <= y + btnH;
+
+            int color = selected ? 0xFF444444 : (hovered ? 0xFF353535 : 0xFF2A2A2A);
+            SmoothGraphics.drawRoundedRect(context, currentX, y, width, btnH, 6, color | alphaColor);
+            context.drawCenteredTextWithShadow(textRenderer, filter, currentX + width / 2, y + 11, (selected ? COLOR_TEXT_WHITE : COLOR_TEXT_GRAY) | alphaColor);
+            
+            currentX += width + gap;
         }
     }
 
-    private void renderModules(DrawContext context, int x, int y, int width, int height, int mouseX, int mouseY) {
-        fillRounded(context, x, y, x + width, y + height, BORDER_RADIUS, COLOR_SECONDARY);
-        drawBorder(context, x, y, x + width, y + height, BORDER_RADIUS, COLOR_ACCENT, 1);
+    private void renderModuleGrid(DrawContext context, int mouseX, int mouseY, float delta, int alphaColor) {
+        int startX = screenX + 20;
+        int startY = screenY + 70;
+        int endY = screenY + screenHeight - 20;
+        int viewWidth = screenWidth - 40;
+        int viewHeight = endY - startY;
 
-        context.drawText(MinecraftClient.getInstance().textRenderer, "Modules", x + 8, y + 6, COLOR_TEXT, false);
+        context.enableScissor(screenX, startY, screenX + screenWidth, endY);
+        
+        // Push scroll transform
+        context.getMatrices().push();
+        context.getMatrices().translate(0, -scrollY, 0);
 
-        List<SoupModule> mods = modulesByCategory.get(selectedCategory);
-        int itemY = y + 20;
-        int itemHeight = 16;
-        int itemPadding = 3;
+        List<SoupModule> filteredModules = getFilteredModules();
 
-        for (SoupModule mod : mods) {
-            if (itemY >= y + height - 3) break;
+        int cardWidth = 135;
+        int cardHeight = 90;
+        int gap = 15;
+        int cols = Math.max(1, viewWidth / (cardWidth + gap));
+        
+        int totalRows = (int) Math.ceil((double) filteredModules.size() / cols);
+        int contentHeight = totalRows * (cardHeight + gap) - gap;
+        
+        maxScroll = Math.max(0, contentHeight - viewHeight);
+        
+        // Render relative to startY (which is 0 in local space + startY offset)
+        // But since we translated by -scrollY, we render at absolute Y.
+        
+        // Wait, context.translate affects drawing.
+        // We want to draw at startY + row*... - scrollY.
+        // If we translate by -scrollY, we draw at startY + row*...
+        
+        for (int i = 0; i < filteredModules.size(); i++) {
+            SoupModule mod = filteredModules.get(i);
+            int col = i % cols;
+            int row = i / cols;
+            
+            int x = startX + col * (cardWidth + gap);
+            int y = startY + row * (cardHeight + gap);
 
-            boolean selected = mod == selectedModule;
-            boolean hovered = mouseX >= x + itemPadding && mouseX <= x + width - itemPadding &&
-                    mouseY >= itemY && mouseY <= itemY + itemHeight;
+            // Culling (in absolute coordinates)
+            float absY = y - scrollY;
+            if (absY + cardHeight < startY || absY > endY) continue;
 
-            int itemColor = selected ? COLOR_HIGHLIGHT : (hovered ? COLOR_ACCENT : 0xFF333333);
-            int textColor = selected ? COLOR_PRIMARY : COLOR_TEXT;
+            renderModuleCard(context, mod, x, y, cardWidth, cardHeight, mouseX, mouseY + (int)scrollY, alphaColor);
+        }
 
-            fillRounded(context, x + itemPadding, itemY, x + width - itemPadding, itemY + itemHeight, 3, itemColor);
-
-            String modName = getModuleName(mod);
-            String shortName = modName.length() > 11 ? modName.substring(0, 9) + ".." : modName;
-            context.drawText(MinecraftClient.getInstance().textRenderer, shortName, x + 7, itemY + 4, textColor, false);
-
-            itemY += itemHeight + 3;
+        context.getMatrices().pop();
+        context.disableScissor();
+        
+        // Scrollbar
+        if (maxScroll > 0) {
+            int barHeight = (int) ((viewHeight / (float) (contentHeight + viewHeight)) * viewHeight); // Fix calculation
+            barHeight = Math.max(30, barHeight);
+            int barArea = viewHeight - barHeight;
+            int barY = startY + (int) ((scrollY / maxScroll) * barArea);
+            int barX = screenX + screenWidth - 6;
+            SmoothGraphics.drawRoundedRect(context, barX, barY, 4, barHeight, 2, 0xFF555555 | alphaColor);
         }
     }
 
-    private void renderSettings(DrawContext context, int x, int y, int width, int height, int mouseX, int mouseY) {
-        fillRounded(context, x, y, x + width, y + height, BORDER_RADIUS, COLOR_SECONDARY);
-        drawBorder(context, x, y, x + width, y + height, BORDER_RADIUS, COLOR_ACCENT, 1);
+    private void renderModuleCard(DrawContext context, SoupModule mod, int x, int y, int w, int h, int mouseX, int mouseY, int alphaColor) {
+        boolean hovered = mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
+        boolean enabled = isModuleEnabled(mod);
+        
+        int bg = hovered ? COLOR_CARD_HOVER : COLOR_CARD_BG;
+        
+        // Card BG
+        SmoothGraphics.drawRoundedRect(context, x, y, w, h, 8, bg | alphaColor);
+        // Accent border if enabled?
+        /* if (enabled) {
+             // draw thin border?
+        } */
 
-        context.drawText(MinecraftClient.getInstance().textRenderer, "Settings", x + 8, y + 6, COLOR_TEXT, false);
+        // Icon placeholder (Circle)
+        int iconSize = 24;
+        SmoothGraphics.drawRoundedRect(context, x + 10, y + 12, iconSize, iconSize, 6, 0xFF353535 | alphaColor);
+        
+        // Title
+        String name = getModuleName(mod);
+        if (textRenderer.getWidth(name) > w - 20) {
+            name = textRenderer.trimToWidth(name, w - 20);
+        }
+        context.drawText(textRenderer, name, x + 10, y + 45, COLOR_TEXT_WHITE | alphaColor, false);
 
+        int toggleW = 40;
+        int toggleH = 20;
+        int toggleX = x + w - toggleW - 10;
+        int toggleY = y + 10;
+        
+        // Toggle Switch
+        int switchBg = enabled ? COLOR_ACCENT_GREEN : 0xFF333333;
+        SmoothGraphics.drawRoundedRect(context, toggleX, toggleY, toggleW, toggleH, 10, switchBg | alphaColor);
+        int knobX = enabled ? toggleX + toggleW - 14 : toggleX + 4;
+        SmoothGraphics.drawRoundedRect(context, knobX, toggleY + 4, 12, 12, 6, 0xFFFFFFFF | alphaColor);
+
+        // Gear Icon (Settings)
+        int gearX = x + 10;
+        int gearY = y + h - 20;
+        context.drawText(textRenderer, "⚙", gearX, gearY, 0xFFAAAAAA | alphaColor, false);
+        
+        // Status Text
+        String statusText = enabled ? "Enabled" : "Disabled";
+        int statusColor = enabled ? COLOR_ACCENT_GREEN : 0xFF555555;
+        context.drawText(textRenderer, statusText, x + w - textRenderer.getWidth(statusText) - 10, y + h - 20, statusColor | alphaColor, false);
+    }
+    
+    private void renderSettingsOverlay(DrawContext context, int mouseX, int mouseY, int alphaColor) {
         if (selectedModule == null) return;
+        
+        int w = 400;
+        int h = 300;
+        int x = (this.width - w) / 2;
+        int y = (this.height - h) / 2;
+        
+        // Background
+        SmoothGraphics.drawRoundedRect(context, x, y, w, h, 12, 0xFF202020 | alphaColor);
+        
+        // Header
+        context.drawText(textRenderer, selectedModule.getDisplayName().getString(), x + 20, y + 20, COLOR_TEXT_WHITE | alphaColor, false);
+        
+        // Close Button (X)
+        int closeX = x + w - 30;
+        int closeY = y + 15;
+        context.drawText(textRenderer, "X", closeX, closeY + 5, COLOR_TEXT_GRAY | alphaColor, false);
+        
+        // Separator
+        context.fill(x + 20, y + 45, x + w - 20, y + 46, 0xFF333333);
+        
+        // Render Settings List
+        int contentY = y + 60;
         List<Setting<?>> settings = selectedModule.getSettings();
-        // If module has no settings, show its display name so user knows what module is selected
+        
         if (settings.isEmpty()) {
-            String disp = selectedModule.getDisplayName().getString();
-            context.drawText(MinecraftClient.getInstance().textRenderer, disp, x + 8, y + 20, COLOR_TEXT_DARK, false);
-            return;
+             context.drawCenteredTextWithShadow(textRenderer, "No settings available", x + w/2, y + h/2, COLOR_TEXT_GRAY | alphaColor);
         }
-        int settingY = y + 20;
-
+        
         for (Setting<?> setting : settings) {
-            if (settingY >= y + height - 3) break;
-
-            context.drawText(MinecraftClient.getInstance().textRenderer, setting.getName(), x + 8, settingY, COLOR_TEXT_DARK, false);
-
-            // Ensure component exists
+            if (contentY > y + h - 30) break; 
+            
+            context.drawText(textRenderer, setting.getName(), x + 30, contentY + 2, COLOR_TEXT_GRAY | alphaColor, false);
+            
+            // Render component
             SettingComponent<?> comp = settingComponents.get(setting);
             if (comp == null) {
-                comp = createComponent(setting, x + 8, settingY + 14);
-                if (comp != null) {
-                    settingComponents.put(setting, comp);
-                }
+                comp = createComponent(setting, x + 200, contentY); // Align components
+                if (comp != null) settingComponents.put(setting, comp);
             }
-
-            // Render component
+            
             if (comp != null) {
-                comp.x = x + 8;
-                comp.y = settingY + 14;
-                comp.render(context, mouseX, mouseY, 0.016f);
+                comp.x = x + 200;
+                comp.y = contentY;
+                comp.render(context, mouseX, mouseY, 0); 
             }
-
-            settingY += 28;
+            
+            contentY += 30;
         }
     }
 
-    private void renderThemeSettings(DrawContext context, int x, int y, int width, int height, int mouseX, int mouseY) {
-        fillRounded(context, x, y, x + width, y + height, BORDER_RADIUS, COLOR_SECONDARY);
-        drawBorder(context, x, y, x + width, y + height, BORDER_RADIUS, COLOR_ACCENT, 1);
-
-        context.drawText(MinecraftClient.getInstance().textRenderer, "Theme", x + 8, y + 6, COLOR_TEXT, false);
-
-        int itemY = y + 20;
-        int itemHeight = 16;
-
-        drawColorSetting(context, "Primary", COLOR_PRIMARY, x, itemY);
-        itemY += itemHeight + 3;
-
-        drawColorSetting(context, "Secondary", COLOR_SECONDARY, x, itemY);
-        itemY += itemHeight + 3;
-
-        drawColorSetting(context, "Accent", COLOR_ACCENT, x, itemY);
-        itemY += itemHeight + 3;
-
-        drawColorSetting(context, "Highlight", COLOR_HIGHLIGHT, x, itemY);
-        itemY += itemHeight + 3;
-
-        drawColorSetting(context, "Text", COLOR_TEXT, x, itemY);
-        itemY += itemHeight + 3;
-
-        drawColorSetting(context, "Text Dark", COLOR_TEXT_DARK, x, itemY);
+    private List<SoupModule> getFilteredModules() {
+        return ALL_MODULES.stream()
+                .filter(m -> selectedCategory == null || m.getCategory() == selectedCategory)
+                .filter(m -> searchQuery.isEmpty() || getModuleName(m).toLowerCase().contains(searchQuery.toLowerCase()))
+                .collect(Collectors.toList());
     }
 
-    private void drawColorSetting(DrawContext context, String label, int color, int x, int y) {
-        context.drawText(MinecraftClient.getInstance().textRenderer, label, x + 8, y, COLOR_TEXT_DARK, false);
-        context.fill(x + 60, y, x + 70, y + 12, color);
-        String hex = String.format("%08X", color).substring(2);
-        context.drawText(MinecraftClient.getInstance().textRenderer, hex, x + 75, y + 2, COLOR_TEXT_DARK, false);
-    }
-
-    private void fillRounded(DrawContext context, int x1, int y1, int x2, int y2, int radius, int color) {
-        UIComponentRenderer.drawRoundedRect(context, x1, y1, x2 - x1, y2 - y1, radius, color);
-    }
-
-    private void drawBorder(DrawContext context, int x1, int y1, int x2, int y2, int radius, int color, int thickness) {
-        UIComponentRenderer.drawRoundedBorder(context, x1, y1, x2 - x1, y2 - y1, radius, color, thickness);
+    private boolean isModuleEnabled(SoupModule mod) {
+        try {
+           Optional<Setting<?>> enabledSet = mod.getSettings().stream().filter(s -> s.getName().equalsIgnoreCase("Enabled")).findFirst();
+           if (enabledSet.isPresent() && enabledSet.get() instanceof BooleanSetting bs) {
+               return bs.getValue();
+           }
+        } catch (Exception e) {}
+        return false;
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int contentY = screenY + HEADER_HEIGHT + 5;
-        int contentHeight = screenHeight - HEADER_HEIGHT - 10;
-
-        int catX = screenX + 10;
-        int catWidth = 120;
-        int modX = catX + catWidth + 8;
-        int modWidth = 120;
-        int setX = modX + modWidth + 8;
-
-        // Header dragging
-        if (button == 0 && mouseY >= screenY && mouseY <= screenY + HEADER_HEIGHT &&
-                mouseX >= screenX && mouseX <= screenX + screenWidth) {
-            isDragging = true;
-            dragOffsetX = (int)(screenX - mouseX);
-            dragOffsetY = (int)(screenY - mouseY);
-            return true;
-        }
-
-        // Theme button
-        int itemY = contentY + 20;
-        if (mouseX >= catX + 3 && mouseX <= catX + catWidth - 3 &&
-                mouseY >= itemY && mouseY <= itemY + 16) {
-            themeMode = true;
-            selectedModule = null;
-            settingComponents.clear();
-            ConfigSaver.saveBoolean("theme.mode", true);
-            return true;
-        }
-        itemY += 19;
-
-        // Categories
-        for (SoupModule.Category cat : SoupModule.Category.values()) {
-            if (mouseX >= catX + 3 && mouseX <= catX + catWidth - 3 &&
-                    mouseY >= itemY && mouseY <= itemY + 16) {
-                themeMode = false;
-                selectedCategory = cat;
-                selectedModule = null;
-                settingComponents.clear();
-                ConfigSaver.saveBoolean("theme.mode", false);
-                ConfigSaver.saveSetting("selected.category", cat.name());
-                return true;
-            }
-            itemY += 19;
-        }
-
-        if (themeMode) {
-            // Theme settings - color boxes are at x + 60, y + (height*rowNumber + 20)
-            int colorBoxX = modX + 60;
-            int colorBoxY = contentY + 20;
-            int itemHeight = 16;
-            
-            // Primary
-            if (mouseX >= colorBoxX && mouseX <= colorBoxX + 10 && mouseY >= colorBoxY && mouseY <= colorBoxY + 12) {
-                MinecraftClient.getInstance().setScreen(new RGBColorPickerScreen(this, COLOR_PRIMARY, (c) -> {
-                    COLOR_PRIMARY = c;
-                    ConfigSaver.saveInt("theme.primary", c);
-                }));
-                return true;
-            }
-            colorBoxY += itemHeight + 3;
-            
-            // Secondary
-            if (mouseX >= colorBoxX && mouseX <= colorBoxX + 10 && mouseY >= colorBoxY && mouseY <= colorBoxY + 12) {
-                MinecraftClient.getInstance().setScreen(new RGBColorPickerScreen(this, COLOR_SECONDARY, (c) -> {
-                    COLOR_SECONDARY = c;
-                    ConfigSaver.saveInt("theme.secondary", c);
-                }));
-                return true;
-            }
-            colorBoxY += itemHeight + 3;
-            
-            // Accent
-            if (mouseX >= colorBoxX && mouseX <= colorBoxX + 10 && mouseY >= colorBoxY && mouseY <= colorBoxY + 12) {
-                MinecraftClient.getInstance().setScreen(new RGBColorPickerScreen(this, COLOR_ACCENT, (c) -> {
-                    COLOR_ACCENT = c;
-                    ConfigSaver.saveInt("theme.accent", c);
-                }));
-                return true;
-            }
-            colorBoxY += itemHeight + 3;
-            
-            // Highlight
-            if (mouseX >= colorBoxX && mouseX <= colorBoxX + 10 && mouseY >= colorBoxY && mouseY <= colorBoxY + 12) {
-                MinecraftClient.getInstance().setScreen(new RGBColorPickerScreen(this, COLOR_HIGHLIGHT, (c) -> {
-                    COLOR_HIGHLIGHT = c;
-                    ConfigSaver.saveInt("theme.highlight", c);
-                }));
-                return true;
-            }
-            colorBoxY += itemHeight + 3;
-            
-            // Text
-            if (mouseX >= colorBoxX && mouseX <= colorBoxX + 10 && mouseY >= colorBoxY && mouseY <= colorBoxY + 12) {
-                MinecraftClient.getInstance().setScreen(new RGBColorPickerScreen(this, COLOR_TEXT, (c) -> {
-                    COLOR_TEXT = c;
-                    ConfigSaver.saveInt("theme.text", c);
-                }));
-                return true;
-            }
-            colorBoxY += itemHeight + 3;
-            
-            // Text Dark
-            if (mouseX >= colorBoxX && mouseX <= colorBoxX + 10 && mouseY >= colorBoxY && mouseY <= colorBoxY + 12) {
-                MinecraftClient.getInstance().setScreen(new RGBColorPickerScreen(this, COLOR_TEXT_DARK, (c) -> {
-                    COLOR_TEXT_DARK = c;
-                    ConfigSaver.saveInt("theme.text_dark", c);
-                }));
-                return true;
-            }
-            return true;
-        }
-
-        // Modules
-        int modItemY = contentY + 20;
-        List<SoupModule> mods = modulesByCategory.get(selectedCategory);
-        for (SoupModule mod : mods) {
-            if (mouseX >= modX + 3 && mouseX <= modX + modWidth - 3 &&
-                    mouseY >= modItemY && mouseY <= modItemY + 16) {
-                selectedModule = mod;
-                settingComponents.clear();
-                ConfigSaver.saveSetting("selected.module", mod.getClass().getSimpleName());
-                return true;
-            }
-            modItemY += 19;
-        }
-
-        // Settings
+        // Overlay interaction
         if (selectedModule != null) {
-            int setWidth = screenX + screenWidth - setX - 10;
-            int settingY = contentY + 20;
-
-            for (Setting<?> setting : selectedModule.getSettings()) {
-                if (settingY >= contentY + contentHeight - 3) break;
-
-                // Get or create component
-                SettingComponent<?> comp = settingComponents.get(setting);
-                if (comp == null) {
-                    comp = createComponent(setting, setX + 8, settingY + 14);
-                    if (comp != null) {
-                        settingComponents.put(setting, comp);
-                    }
+            int w = 400; int h = 300;
+            int x = (this.width - w) / 2; int y = (this.height - h) / 2;
+            
+            // Close button
+            if (mouseX >= x + w - 40 && mouseX <= x + w - 10 && mouseY >= y + 10 && mouseY <= y + 40) {
+                selectedModule = null;
+                settingComponents.clear(); 
+                return true;
+            }
+            
+            // Handle Setting interactions
+             for (SettingComponent<?> comp : settingComponents.values()) {
+                if (mouseX >= comp.x && mouseX <= comp.x + comp.width &&
+                    mouseY >= comp.y && mouseY <= comp.y + comp.height) {
+                    comp.mouseClicked(mouseX, mouseY, button);
+                    ConfigManager.saveConfig();
+                    ConfigSaver.saveAll();
+                    return true;
                 }
+            }
+            
+            // Click outside to close
+            if (mouseX < x || mouseX > x + w || mouseY < y || mouseY > y + h) {
+                selectedModule = null;
+                return true;
+            }
+            return true; // Consume click
+        }
 
-                // Check if clicked
-                if (comp != null) {
-                    comp.x = setX + 8;
-                    comp.y = settingY + 14;
-                    if (mouseX >= comp.x && mouseX <= comp.x + comp.width &&
-                        mouseY >= comp.y && mouseY <= comp.y + comp.height) {
-                        comp.mouseClicked(mouseX, mouseY, button);
-                        ConfigManager.saveConfig();
-                        ConfigSaver.saveAll();
-                        return true;
-                    }
+        // Search Bar click
+        int searchW = 180;
+        int searchX = screenX + screenWidth - 20 - searchW;
+        int searchY = screenY + 20;
+        if (mouseX >= searchX && mouseX <= searchX + searchW && mouseY >= searchY && mouseY <= searchY + 30) {
+            isTypingSearch = !isTypingSearch;
+            return true;
+        } else if (isTypingSearch) {
+             isTypingSearch = false; // Click away
+        }
+
+        // Filter clicks
+        int startX = screenX + 130;
+        int filterY = screenY + 20;
+        int btnH = 30;
+        int gap = 10;
+        
+        List<String> filters = new ArrayList<>();
+        filters.add("All");
+        for(SoupModule.Category c : SoupModule.Category.values()) {
+            filters.add(c.name().charAt(0) + c.name().substring(1).toLowerCase());
+        }
+        
+        int currentX = startX;
+        for (int i = 0; i < filters.size(); i++) {
+            String filter = filters.get(i);
+            int width = textRenderer.getWidth(filter) + 20;
+            
+            if (mouseX >= currentX && mouseX <= currentX + width && mouseY >= filterY && mouseY <= filterY + btnH) {
+                if (i == 0) selectedCategory = null;
+                else selectedCategory = SoupModule.Category.values()[i-1];
+                targetScrollY = 0; // Reset scroll
+                return true;
+            }
+            currentX += width + gap;
+        }
+
+        // Grid clicks
+        List<SoupModule> filtered = getFilteredModules();
+        int gridStartX = screenX + 20;
+        int gridStartY = screenY + 70;
+        
+        // Mouse Y relative to grid for scrolling
+        // But we check absolute mouse position against absolute card position.
+        // Card Y = startY + row*... - scrollY
+        // So we need to compute card position.
+        
+        int cardWidth = 135; int cardHeight = 90; int cardGap = 15;
+        int viewWidth = screenWidth - 40;
+        int cols = Math.max(1, viewWidth / (cardWidth + cardGap));
+
+        for (int i = 0; i < filtered.size(); i++) {
+            SoupModule mod = filtered.get(i);
+            int col = i % cols;
+            int row = i / cols;
+            int mx = gridStartX + col * (cardWidth + cardGap);
+            int my = (int) (gridStartY + row * (cardHeight + cardGap) - scrollY);
+
+            // Culling / Bounds Check
+             if (my + cardHeight < gridStartY || my > screenY + screenHeight - 20) continue;
+             // Click inside grid area only
+             if (mouseY < gridStartY || mouseY > screenY + screenHeight - 20) continue;
+
+            if (mouseX >= mx && mouseX <= mx + cardWidth && mouseY >= my && mouseY <= my + cardHeight) {
+                // Determine if clicked toggle or card (settings)
+                int toggleW = 40; int toggleH = 20;
+                int toggleX = mx + cardWidth - toggleW - 10;
+                int toggleY = my + 10;
+
+                if (mouseX >= toggleX && mouseX <= toggleX + toggleW && mouseY >= toggleY && mouseY <= toggleY + toggleH) {
+                    // Toggle
+                     try {
+                       Optional<Setting<?>> enabledSet = mod.getSettings().stream().filter(s -> s.getName().equalsIgnoreCase("Enabled")).findFirst();
+                       if (enabledSet.isPresent() && enabledSet.get() instanceof BooleanSetting bs) {
+                           bs.setValue(!bs.getValue());
+                           ConfigManager.saveConfig();
+                       }
+                    } catch (Exception e) {}
+                } else {
+                    // Open Settings
+                    selectedModule = mod;
+                    settingComponents.clear();
                 }
-
-                settingY += 28;
+                return true;
             }
         }
 
         return super.mouseClicked(mouseX, mouseY, button);
     }
-
+    
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (isDragging && button == 0) {
-            customX = (int) Math.max(0, Math.min(mouseX + dragOffsetX, this.width - screenWidth));
-            customY = (int) Math.max(0, Math.min(mouseY + dragOffsetY, this.height - screenHeight));
-
-            // Save position
-            ConfigSaver.saveInt("screen.x", customX);
-            ConfigSaver.saveInt("screen.y", customY);
-
-            return true;
-        }
-
-        // Settings dragging
-        if (selectedModule != null) {
-            int contentY = screenY + HEADER_HEIGHT + 5;
-            int modX = screenX + 10 + 120 + 8;
-            int modWidth = 120;
-            int setX = modX + modWidth + 8;
-            int settingY = contentY + 20;
-
-            for (Setting<?> setting : selectedModule.getSettings()) {
-                if (settingY >= contentY + (screenHeight - HEADER_HEIGHT - 10) - 3) break;
-
-                SettingComponent<?> comp = settingComponents.get(setting);
-                if (comp != null) {
-                    comp.x = setX + 8;
-                    comp.y = settingY + 12;
-                    comp.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
-                }
-                settingY += 19;
-            }
-        }
-        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
-    }
-
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (isDragging && button == 0) {
-            isDragging = false;
-            return true;
-        }
-
-        // Settings release
-        if (selectedModule != null) {
-            int contentY = screenY + HEADER_HEIGHT + 5;
-            int modX = screenX + 10 + 120 + 8;
-            int modWidth = 120;
-            int setX = modX + modWidth + 8;
-            int settingY = contentY + 20;
-
-            for (Setting<?> setting : selectedModule.getSettings()) {
-                if (settingY >= contentY + (screenHeight - HEADER_HEIGHT - 10) - 3) break;
-
-                SettingComponent<?> comp = settingComponents.get(setting);
-                if (comp != null) {
-                    comp.x = setX + 8;
-                    comp.y = settingY + 12;
-                    comp.mouseReleased(mouseX, mouseY, button);
-                }
-                settingY += 19;
-            }
-        }
-        return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    private SettingComponent<?> createComponent(Setting<?> setting, int x, int y) {
-        return switch (setting) {
-            case BooleanSetting bs -> new BooleanComponent(bs, x, y, 80, 12);
-            case SliderSetting ss -> new SliderComponent(ss, x, y, 80, 12);
-            case EnumSetting<?> es -> new EnumComponent<>(es, x, y, 80, 12);
-            case ButtonSetting bs -> new ButtonComponent(bs, x, y, 80, 12);
-            case StringSetting ss -> new StringComponent(ss, x, y, 80, 12);
-            case ColorSetting cs -> new ColorComponent(cs, x, y, 60, 16);
-            case KeyBindingSetting kbs -> new KeyBindingComponent(kbs, x, y, 60, 16);
-            default -> null;
-        };
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        for (SettingComponent<?> comp : settingComponents.values()) {
-            if (comp instanceof StringComponent sc) {
-                if (sc.keyPressed(keyCode, scanCode, modifiers)) {
-                    return true;
-                }
-            }
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (selectedModule != null) return false;
+        
+        targetScrollY -= verticalAmount * 40; 
+        targetScrollY = MathHelper.clamp(targetScrollY, 0, maxScroll);
+        return true;
     }
 
     @Override
     public boolean charTyped(char chr, int modifiers) {
-        for (SettingComponent<?> comp : settingComponents.values()) {
-            if (comp instanceof StringComponent sc) {
-                if (sc.charTyped(chr, modifiers)) {
-                    return true;
-                }
+        if (selectedModule != null) {
+            for (SettingComponent<?> comp : settingComponents.values()) {
+                 if (comp instanceof StringComponent sc) sc.charTyped(chr, modifiers);
             }
+            return true;
+        }
+
+        if (isTypingSearch) {
+            searchQuery += chr;
+            return true;
         }
         return super.charTyped(chr, modifiers);
     }
 
     @Override
-    public boolean shouldCloseOnEsc() {
-        return true;
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (selectedModule != null) {
+            for (SettingComponent<?> comp : settingComponents.values()) {
+                if (comp instanceof StringComponent sc) sc.keyPressed(keyCode, scanCode, modifiers);
+                if (comp instanceof KeyBindingComponent kbc) kbc.keyPressed(keyCode, scanCode, modifiers);
+            }
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                selectedModule = null;
+                return true;
+            }
+            return true;
+        }
+
+        if (isTypingSearch) {
+            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !searchQuery.isEmpty()) {
+                searchQuery = searchQuery.substring(0, searchQuery.length() - 1);
+            }
+            if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                isTypingSearch = false;
+            }
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+         if (selectedModule != null) {
+            for (SettingComponent<?> comp : settingComponents.values()) {
+                 comp.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+            }
+         }
+         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+         if (selectedModule != null) {
+            for (SettingComponent<?> comp : settingComponents.values()) {
+                 comp.mouseReleased(mouseX, mouseY, button);
+            }
+         }
+         return super.mouseReleased(mouseX, mouseY, button);
+    }
+    
+    private String getModuleName(SoupModule mod) {
+        return switch (mod.getClass().getSimpleName()) {
+            case "AmbientParticle" -> "Ambient Particles";
+            case "AspectRatio" -> "Aspect Ratio";
+            case "BetterHudStyles" -> "Better HUD";
+            default -> mod.getDisplayName().getString();
+        };
+    }
+    
+    private SettingComponent<?> createComponent(Setting<?> setting, int x, int y) {
+        return switch (setting) {
+            case BooleanSetting bs -> new BooleanComponent(bs, x, y, 80, 12);
+            case SliderSetting ss -> new SliderComponent(ss, x, y, 140, 12);
+            case EnumSetting<?> es -> new EnumComponent<>(es, x, y, 140, 12);
+            case ButtonSetting bs -> new ButtonComponent(bs, x, y, 140, 12);
+            case StringSetting ss -> new StringComponent(ss, x, y, 140, 12);
+            case ColorSetting cs -> new ColorComponent(cs, x, y, 60, 16);
+            case KeyBindingSetting kbs -> new KeyBindingComponent(kbs, x, y, 60, 16);
+            default -> null;
+        };
     }
 }

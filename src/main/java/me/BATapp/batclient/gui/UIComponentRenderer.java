@@ -1,5 +1,6 @@
 package me.BATapp.batclient.gui;
 
+import me.BATapp.batclient.utils.SmoothGraphics;
 import me.BATapp.batclient.utils.UIElementManager;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderLayer;
@@ -21,10 +22,12 @@ public class UIComponentRenderer {
         int bgColor = UIElementManager.applyAlpha(elem.backgroundColor, elem.alpha);
         int accentColor = UIElementManager.applyAlpha(elem.accentColor, elem.alpha);
         int radius = 8;
+        int border = 2;
 
-        drawRoundedRect(context, x, y, width, height, radius, bgColor);
-        
-        drawRoundedBorder(context, x, y, width, height, radius, accentColor, 2);
+        // Draw border
+        SmoothGraphics.drawRoundedRect(context, x, y, width, height, radius, accentColor);
+        // Draw background on top
+        SmoothGraphics.drawRoundedRect(context, x + border, y + border, width - (border * 2), height - (border * 2), radius - border, bgColor);
     }
     
     /**
@@ -66,63 +69,7 @@ public class UIComponentRenderer {
     /**
      * Vykreslit border
      */
-    public static void drawRoundedBorder(DrawContext context, int x, int y, int width, int height, int radius, int color, int thickness) {
-        // Rovné části
-        fill(context, x + radius, y, x + width - radius, y + thickness, color);
-        fill(context, x + radius, y + height - thickness, x + width - radius, y + height, color);
-        fill(context, x, y + radius, x + thickness, y + height - radius, color);
-        fill(context, x + width - thickness, y + radius, x + width, y + height - radius, color);
 
-        // Rohy
-        drawArc(context, x + radius, y + radius, radius, 180, 270, color, thickness); // Horní levý
-        drawArc(context, x + width - radius, y + radius, radius, 270, 360, color, thickness); // Horní pravý
-        drawArc(context, x + width - radius, y + height - radius, radius, 0, 90, color, thickness); // Dolní pravý
-        drawArc(context, x + radius, y + height - radius, radius, 90, 180, color, thickness); // Dolní levý
-    }
-
-    public static void drawArc(DrawContext context, int centerX, int centerY, int radius, int startAngle, int endAngle, int color, int thickness) {
-        for (int t = 0; t < thickness; t++) {
-            for (double i = startAngle; i <= endAngle; i += 0.25) { // Increased resolution
-                double angle = Math.toRadians(i);
-                int x = (int) (centerX + Math.cos(angle) * (radius - t));
-                int y = (int) (centerY + Math.sin(angle) * (radius - t));
-                fill(context, x, y, x + 1, y + 1, color);
-            }
-        }
-    }
-    
-    /**
-     * Vykreslí zaoblený obdélník.
-     */
-    public static void drawRoundedRect(DrawContext context, int x, int y, int width, int height, int radius, int color) {
-        fill(context, x + radius, y, x + width - radius, y + height, color);
-        fill(context, x, y + radius, x + width, y + height - radius, color);
-        drawFilledCircleCorner(context, x + radius, y + radius, radius, 0, color);
-        drawFilledCircleCorner(context, x + width - radius, y + radius, radius, 1, color);
-        drawFilledCircleCorner(context, x + width - radius, y + height - radius, radius, 2, color);
-        drawFilledCircleCorner(context, x + radius, y + height - radius, radius, 3, color);
-    }
-
-    public static void drawFilledCircleCorner(DrawContext context, int centerX, int centerY, int radius, int quadrant, int color) {
-        for (int i = 0; i <= radius; i++) {
-            int y_offset = i;
-            int x_offset = (int) Math.round(Math.sqrt(radius * radius - y_offset * y_offset));
-            switch (quadrant) {
-                case 0: // Horní levý
-                    fill(context, centerX - x_offset, centerY - y_offset, centerX, centerY - y_offset + 1, color);
-                    break;
-                case 1: // Horní pravý
-                    fill(context, centerX, centerY - y_offset, centerX + x_offset, centerY - y_offset + 1, color);
-                    break;
-                case 2: // Dolní pravý
-                    fill(context, centerX, centerY + i, centerX + x_offset, centerY + i + 1, color);
-                    break;
-                case 3: // Dolní levý
-                    fill(context, centerX - x_offset, centerY + i, centerX, centerY + i + 1, color);
-                    break;
-            }
-        }
-    }
     
     /**
      * Jednoduchý fill

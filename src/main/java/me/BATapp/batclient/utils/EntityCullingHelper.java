@@ -23,67 +23,59 @@ public class EntityCullingHelper {
             return false;
         }
         
-        // Always render the player
-        if (entity == camera.getFocusedEntity()) {
+        // Always render the player or ridden entity
+        if (entity == camera.getFocusedEntity() || entity.hasPassenger(camera.getFocusedEntity())) {
             return true;
         }
         
         Vec3d cameraPos = camera.getPos();
         Vec3d entityPos = entity.getPos();
         
-        // Check distance
+        // Check distance squared
         double distSquared = cameraPos.squaredDistanceTo(entityPos);
-        double renderDistance = 256.0; // Default render distance
-        
+        double renderDistance = 256.0; // Default render distance (16 chunks)
+        // Optimization: Use separate squared distance check for culling
         if (distSquared > renderDistance * renderDistance) {
             return false;
         }
         
-        // Check frustum culling
-        if (!isInFrustum(entity, camera)) {
-            return false;
+        // Check if entity is behind camera (Back-face culling for entities)
+        // Only cull if significantly behind to support high FOV
+        if (isEntityBehindCamera(entity, camera)) {
+             return false;
         }
-        
+
         return true;
     }
     
-    /**
-     * Simple frustum culling check
-     */
-    private static boolean isInFrustum(Entity entity, Camera camera) {
-        Box box = entity.getBoundingBox();
-        Vec3d cameraPos = camera.getPos();
-        
-        // Simple AABB frustum test
-        // Check if entity bounding box is within camera view
-        Vec3d boxCenter = box.getCenter();
-        double xLength = box.maxX - box.minX;
-        double yLength = box.maxY - box.minY;
-        double zLength = box.maxZ - box.minZ;
-        double boxRadius = Math.max(Math.max(xLength, yLength), zLength) / 2.0;
-        
-        Vec3d toEntity = boxCenter.subtract(cameraPos);
-        
-        // Basic visibility check
-        return toEntity.length() < 128.0; // Simplified frustum check
-    }
+    // Deprecated: Incorrect implementation
+    // private static boolean isInFrustum(Entity entity, Camera camera) { ... }
     
     /**
      * Check if entity is behind camera
      */
     public static boolean isEntityBehindCamera(Entity entity, Camera camera) {
-        Vec3d cameraPos = camera.getPos();
-        Vec3d entityPos = entity.getPos();
-        Vec3d direction = entityPos.subtract(cameraPos);
+        // Calculate relative position
+        double dx = entity.getX() - camera.getPos().x;
+        double dy = entity.getY() - camera.getPos().y;
+        double dz = entity.getZ() - camera.getPos().z;
         
-        // Get camera direction (simplified)
-        Vec3d forward = camera.getPos().add(
-            Math.cos(Math.toRadians(camera.getYaw())) * 10,
-            0,
-            Math.sin(Math.toRadians(camera.getYaw())) * 10
-        ).subtract(cameraPos);
+        // Calculate camera forward vector from yaw/pitch
+        // Optimization: Inlined vector calculation to avoid allocation
+        float yaw = camera.getYaw();
+        float pitch = camera.getPitch();
         
-        return direction.dotProduct(forward) < 0;
+        float f = (float)Math.PI / 180F;
+        float g = -net.minecraft.util.math.MathHelper.sin(yaw * f) * net.minecraft.util.math.MathHelper.cos(pitch * f);
+        float h = -net.minecraft.util.math.MathHelper.sin(pitch * f);
+        float k = net.minecraft.util.math.MathHelper.cos(yaw * f) * net.minecraft.util.math.MathHelper.cos(pitch * f);
+
+        // Dot product
+        double dot = dx * g + dy * h + dz * k;
+        
+        // Cull only if dot product is significantly negative (behind)
+        // -2.0 tolerance allows entities slightly behind the strict plane (e.g. large hitboxes intersecting camera)
+        return dot < -5.0; 
     }
     
     /**

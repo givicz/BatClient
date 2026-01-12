@@ -2,6 +2,7 @@ package me.BATapp.batclient.screen;
 
 import me.BATapp.batclient.config.ConfigurableModule;
 import me.BATapp.batclient.utils.CursorUtils;
+import me.BATapp.batclient.utils.SmoothGraphics;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -303,20 +304,23 @@ public class ConfigHudPositionsScreen extends Screen {
         }
 
         public void render(DrawContext context) {
-            context.fill(x, y, x + width, y + height, color);
-            context.drawBorder(x, y, width, height, color);
+            int bgColor = (color & 0x00FFFFFF) | 0xAA000000; // Keep original color but with AA alpha
+            SmoothGraphics.drawRoundedRect(context, x, y, width, height, 4, bgColor);
 
             TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
             int textHeight = textRenderer.fontHeight;
+            int textWidth = textRenderer.getWidth(name);
 
             int textY = y - textHeight - 2;
+            int textX = x;
 
             if (textY < 0) {
                 textY = y + height;
             }
 
+            SmoothGraphics.drawRoundedRect(context, textX, textY, textWidth + 4, textHeight + 2, 2, 0xAA000000);
             context.drawTextWithShadow(
-                    textRenderer, name, x, textY, 0xFFFFFFFF
+                    textRenderer, name, textX + 2, textY + 1, 0xFFFFFFFF
             );
         }
 
